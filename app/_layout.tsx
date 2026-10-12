@@ -3,6 +3,7 @@ import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import { Text, View } from "react-native";
 import { db } from "@/db/client";
 import migrations from "@/db/migrations/migrations";
+import { seedCategories } from "@/db/seeds";
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
@@ -15,5 +16,6 @@ export default function RootLayout() {
     );
   }
   if (!success) return null;
+  seedCategories();
   return <Stack />;
 }
