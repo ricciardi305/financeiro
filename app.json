@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "financeiro",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -22,7 +22,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0b1220",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -33,6 +33,7 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "backgroundColor": "#0b1220"
   }
 }

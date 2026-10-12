@@ -1,4 +1,5 @@
 import type { transactions } from "@/db/schema";
+import { UserError } from "./errors";
 
 export type NewTransaction = typeof transactions.$inferInsert;
 
@@ -18,13 +19,13 @@ export function saoPauloDate(iso: string): string {
 
 function checkAmount(cents: number): void {
   if (!Number.isSafeInteger(cents) || cents <= 0) {
-    throw new Error("amountCents must be a positive integer (cents)");
+    throw new UserError("Informe um valor maior que zero.");
   }
 }
 
 function checkDescription(text: string): string {
   const d = text.trim();
-  if (!d) throw new Error("description is required");
+  if (!d) throw new UserError("Informe uma descrição.");
   return d;
 }
 
@@ -77,7 +78,7 @@ export type TransferInput = {
 /** Two legs sharing a transferGroupId: negative at the origin, positive at the destination. */
 export function buildTransfer(i: TransferInput): [out: NewTransaction, into: NewTransaction] {
   checkAmount(i.amountCents);
-  if (i.fromAccountId === i.toAccountId) throw new Error("transfer needs two different accounts");
+  if (i.fromAccountId === i.toAccountId) throw new UserError("Escolha contas diferentes para a transferência.");
   const base = {
     kind: "transfer" as const,
     description: checkDescription(i.description),
