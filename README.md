@@ -2,7 +2,7 @@
 
 App Android **pessoal** (um único usuário) para controlar toda a vida financeira: receitas, despesas, contas, cartões de crédito com faturas, contas fixas recorrentes e investimentos. Os lançamentos podem ser manuais ou automáticos (notificações dos bancos e Open Finance via Pluggy).
 
-> Em desenvolvimento. Status atual: **Fase 0 (setup)**. O plano completo está em [HANDOFF.md](HANDOFF.md).
+> Em desenvolvimento. Status atual: **Fase 1 (base) concluída**: contas, lançamentos (criar, editar, excluir), lista com filtros e backup. O plano completo está em [HANDOFF.md](HANDOFF.md).
 
 ## Stack
 

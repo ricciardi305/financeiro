@@ -63,6 +63,8 @@ export function Chips<T extends string>(props: {
   options: { value: T; label: string }[];
   value: T | undefined;
   onChange: (v: T) => void;
+  /** When set, tapping the selected chip again clears the choice. */
+  onClear?: () => void;
   disabled?: boolean;
 }) {
   return (
@@ -75,7 +77,7 @@ export function Chips<T extends string>(props: {
             <Pressable
               key={o.value}
               disabled={props.disabled}
-              onPress={() => props.onChange(o.value)}
+              onPress={() => (on && props.onClear ? props.onClear() : props.onChange(o.value))}
               style={{
                 paddingVertical: 8,
                 paddingHorizontal: 12,
@@ -95,7 +97,7 @@ export function Chips<T extends string>(props: {
   );
 }
 
-export function Button(props: { title: string; onPress: () => void; danger?: boolean }) {
+export function Button(props: { title: string; onPress: () => void; danger?: boolean; secondary?: boolean }) {
   return (
     <Pressable
       onPress={props.onPress}
@@ -103,7 +105,9 @@ export function Button(props: { title: string; onPress: () => void; danger?: boo
         padding: 14,
         borderRadius: 8,
         alignItems: "center",
-        backgroundColor: props.danger ? colors.dangerBg : colors.primary,
+        backgroundColor: props.danger ? colors.dangerBg : props.secondary ? colors.surface : colors.primary,
+        borderWidth: props.secondary ? 1 : 0,
+        borderColor: colors.border,
       }}
     >
       <Text style={{ color: props.danger ? colors.dangerText : colors.primaryText, fontWeight: "600" }}>

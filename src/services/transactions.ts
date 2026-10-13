@@ -1,9 +1,20 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt } from "drizzle-orm";
 import { db } from "@/db/client";
 import { newId } from "@/db/id";
 import { accounts, categories, transactions } from "@/db/schema";
 import { accountBalance, type Balance } from "@/domain/balance";
-import { buildEntry, buildTransfer, type EntryInput, type TransferInput } from "@/domain/entries";
+import { monthRange } from "@/domain/dates";
+import { UserError } from "@/domain/errors";
+import {
+  buildEntry,
+  buildEntryUpdate,
+  buildTransfer,
+  buildTransferUpdate,
+  type EntryChanges,
+  type EntryInput,
+  type TransferChanges,
+  type TransferInput,
+} from "@/domain/entries";
 
 function requireAccount(id: string) {
   const a = db.select().from(accounts).where(eq(accounts.id, id)).get();
@@ -12,16 +23,19 @@ function requireAccount(id: string) {
   return a;
 }
 
+function requireCategory(categoryId: string | null | undefined, kind: "income" | "expense"): void {
+  if (!categoryId) return;
+  const c = db.select().from(categories).where(eq(categories.id, categoryId)).get();
+  if (!c) throw new Error(`category not found: ${categoryId}`);
+  if (c.kind !== kind) throw new UserError(`A categoria "${c.name}" não é de ${kind === "income" ? "receita" : "despesa"}.`);
+}
+
 export function createEntry(input: EntryInput): string {
   const account = requireAccount(input.accountId);
   if (account.type === "credit_card" && !input.invoiceId) {
     throw new Error("card purchases need an invoice (phase 2)");
   }
-  if (input.categoryId) {
-    const c = db.select().from(categories).where(eq(categories.id, input.categoryId)).get();
-    if (!c) throw new Error(`category not found: ${input.categoryId}`);
-    if (c.kind !== input.kind) throw new Error(`category "${c.name}" is not an ${input.kind} category`);
-  }
+  requireCategory(input.categoryId, input.kind);
   const id = newId();
   db.insert(transactions).values({ ...buildEntry(input), id }).run();
   return id;
@@ -57,4 +71,117 @@ export function getAccountBalance(accountId: string): Balance {
     .where(and(eq(transactions.accountId, accountId), isNull(transactions.deletedAt)))
     .all();
   return accountBalance(a.initialBalanceCents, rows);
+}
+
+export type TransactionRow = {
+  id: string;
+  accountName: string;
+  amountCents: number;
+  kind: "income" | "expense" | "transfer" | "adjustment";
+  description: string;
+  categoryName: string | null;
+  occurredOn: string;
+  status: "pending" | "confirmed";
+  isTransfer: boolean;
+};
+
+/** Active transactions of a month (YYYY-MM), newest first, optionally narrowed by account/category. */
+export function listTransactions(f: { month: string; accountId?: string; categoryId?: string }): TransactionRow[] {
+  const { from, to } = monthRange(f.month);
+  const conds = [
+    isNull(transactions.deletedAt),
+    gte(transactions.occurredOn, from),
+    lt(transactions.occurredOn, to),
+  ];
+  if (f.accountId) conds.push(eq(transactions.accountId, f.accountId));
+  if (f.categoryId) conds.push(eq(transactions.categoryId, f.categoryId));
+  return db
+    .select({
+      id: transactions.id,
+      accountName: accounts.name,
+      amountCents: transactions.amountCents,
+      kind: transactions.kind,
+      description: transactions.description,
+      categoryName: categories.name,
+      occurredOn: transactions.occurredOn,
+      status: transactions.status,
+      transferGroupId: transactions.transferGroupId,
+    })
+    .from(transactions)
+    .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+    .leftJoin(categories, eq(categories.id, transactions.categoryId))
+    .where(and(...conds))
+    .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt))
+    .all()
+    .map(({ transferGroupId, ...r }) => ({ ...r, isTransfer: transferGroupId !== null }));
+}
+
+export type TransactionForEdit = {
+  id: string;
+  kind: "income" | "expense" | "transfer";
+  accountId: string; // for a transfer: the origin
+  toAccountId?: string; // transfer destination
+  amountCents: number; // magnitude, always positive
+  description: string;
+  occurredAt: string;
+  occurredOn: string;
+  categoryId: string | null;
+  necessity: "essential" | "optional" | null;
+};
+
+function activeLegs(t: typeof transactions.$inferSelect) {
+  return t.transferGroupId
+    ? db
+        .select()
+        .from(transactions)
+        .where(and(eq(transactions.transferGroupId, t.transferGroupId), isNull(transactions.deletedAt)))
+        .all()
+    : [t];
+}
+
+export function getTransactionForEdit(id: string): TransactionForEdit {
+  const t = db.select().from(transactions).where(and(eq(transactions.id, id), isNull(transactions.deletedAt))).get();
+  if (!t) throw new UserError("Lançamento não encontrado.");
+  if (t.kind === "adjustment") throw new UserError("Ajustes de saldo não podem ser editados.");
+  if (t.kind === "transfer") {
+    const [out, into] = [activeLegs(t).find((l) => l.amountCents < 0), activeLegs(t).find((l) => l.amountCents > 0)];
+    if (!out || !into) throw new Error(`broken transfer: ${t.transferGroupId}`);
+    return {
+      id, kind: "transfer", accountId: out.accountId, toAccountId: into.accountId,
+      amountCents: into.amountCents, description: t.description, occurredAt: t.occurredAt,
+      occurredOn: t.occurredOn, categoryId: null, necessity: null,
+    };
+  }
+  return {
+    id, kind: t.kind, accountId: t.accountId, amountCents: Math.abs(t.amountCents), description: t.description,
+    occurredAt: t.occurredAt, occurredOn: t.occurredOn, categoryId: t.categoryId, necessity: t.necessity,
+  };
+}
+
+export function updateEntry(id: string, changes: EntryChanges): void {
+  const t = db.select().from(transactions).where(and(eq(transactions.id, id), isNull(transactions.deletedAt))).get();
+  if (!t) throw new UserError("Lançamento não encontrado.");
+  if (t.kind !== "income" && t.kind !== "expense") throw new UserError("Este tipo de lançamento não pode ser editado aqui.");
+  if (t.installmentGroupId) throw new UserError("Edição de parcelados chega com a Fase 2.");
+  if (changes.accountId !== t.accountId) {
+    const target = requireAccount(changes.accountId);
+    if (target.type === "credit_card") throw new UserError("Compras no cartão exigem fatura (Fase 2).");
+  }
+  requireCategory(changes.categoryId, t.kind);
+  db.update(transactions).set(buildEntryUpdate(t.kind, changes)).where(eq(transactions.id, id)).run();
+}
+
+/** Edits amount, description and date of both legs at once. */
+export function updateTransfer(id: string, changes: TransferChanges): void {
+  const t = db.select().from(transactions).where(and(eq(transactions.id, id), isNull(transactions.deletedAt))).get();
+  if (!t || t.kind !== "transfer") throw new UserError("Transferência não encontrada.");
+  const legs = activeLegs(t);
+  const out = legs.find((l) => l.amountCents < 0);
+  const into = legs.find((l) => l.amountCents > 0);
+  if (!out || !into) throw new Error(`broken transfer: ${t.transferGroupId}`);
+  const u = buildTransferUpdate(changes);
+  db.transaction((tx) => {
+    tx.update(transactions).set(u.out).where(eq(transactions.id, out.id)).run();
+    tx.update(transactions).set(u.into).where(eq(transactions.id, into.id)).run();
+  });
 }

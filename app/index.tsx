@@ -47,7 +47,18 @@ export default function Accounts() {
           {showArchived ? "Ocultar arquivadas" : "Mostrar arquivadas"}
         </Text>
       </Pressable>
-      <Button title="Nova conta" onPress={() => router.push("/account-form")} />
+      <Button title="Novo lançamento" onPress={() => router.push("/entry-form")} />
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Button secondary title="Lançamentos" onPress={() => router.push("/transactions")} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button secondary title="Nova conta" onPress={() => router.push("/account-form")} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button secondary title="Backup" onPress={() => router.push("/settings")} />
+        </View>
+      </View>
     </View>
   );
 }

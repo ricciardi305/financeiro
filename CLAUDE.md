@@ -19,7 +19,10 @@ App Android **pessoal** (um único usuário) para controlar toda a vida financei
 ## Ambiente
 - Desenvolvimento no **Windows** (sem WSL), com Android Studio, SDK e um aparelho físico via ADB.
 - `npx expo run:android` para build local. EAS Build como alternativa.
-- Rode `npx expo prebuild --clean` após mexer em nativo ou em config plugin.
+- Rode `npx expo prebuild --clean` após mexer em nativo ou em config plugin (e em campos de `app.json` que viram config nativa, como `userInterfaceStyle`). Depois dele, **reinicie o Metro com `--clear`**: o watcher trava e o app deixa de refletir as mudanças.
+- Variáveis de ambiente do usuário: `JAVA_HOME` (Temurin 17), `ANDROID_HOME`, e `platform-tools` no `PATH`. Para o celular alcançar o Metro: `adb reverse tcp:8081 tcp:8081`.
+- O aparelho é um Xiaomi (HyperOS): instalar via USB exige "Instalar via USB" ligado nas Opções do desenvolvedor, com a conta Xiaomi logada.
+- **Módulo nativo novo exige recompilar e reinstalar o app.** Antes de adicionar um, prefira o que já está no APK (`expo-sqlite`, `expo-file-system`, `expo-secure-store`). Dependência só de JS carrega sem rebuild.
 
 ## Arquitetura
 ```
@@ -41,10 +44,16 @@ Regra: **lógica financeira fica em `src/domain`, em funções puras e testadas*
 ### Contas (`accounts`)
 `type`: `checking` (conta corrente) | `credit_card` | `investment` | `cash` (carteira).
 Campos: id, name, institution (`nubank` | `inter` | `other`), type, initialBalanceCents, archived, pluggyAccountId?.
-Cartão também tem: closingDay, dueDay, limitCents?, paymentAccountId (conta que paga a fatura).
+Cartão também tem: closingDay, dueDay, limitCents?, paymentAccountId (conta que paga a fatura; precisa ser uma conta corrente ativa).
+- `type` e `initialBalanceCents` são **fixos após a criação**. Correção de saldo é um lançamento `adjustment`.
+- Conta não é excluída: é **arquivada** (e não dá para arquivar a conta que paga a fatura de um cartão ativo).
 
 ### Lançamentos (`transactions`)
-Campos: id, accountId, **amountCents assinado** (negativo = saída da conta, positivo = entrada), kind (`income` | `expense` | `transfer` | `adjustment`), description, merchantRaw?, categoryId?, necessity? (`essential` | `optional`), occurredAt, status (`pending` | `confirmed`), source (`manual` | `notification` | `pluggy` | `recurrence`), invoiceId?, installmentGroupId?, installmentNumber?, installmentTotal?, transferGroupId?, occurrenceId?, pluggyTransactionId?, rawNotificationId?, notes?.
+Campos: id, accountId, **amountCents assinado** (negativo = saída da conta, positivo = entrada), kind (`income` | `expense` | `transfer` | `adjustment`), description, merchantRaw?, categoryId?, necessity? (`essential` | `optional`), occurredAt (instante ISO), **occurredOn** (`YYYY-MM-DD` no fuso America/Sao_Paulo), status (`pending` | `confirmed`), source (`manual` | `notification` | `pluggy` | `recurrence`), invoiceId?, **paidInvoiceId?**, installmentGroupId?, installmentNumber?, installmentTotal?, transferGroupId?, occurrenceId?, pluggyTransactionId?, rawNotificationId?, notes?, createdAt, **deletedAt?**.
+
+- **Toda regra de dia ou mês usa `occurredOn`**, nunca o instante UTC (um ISO perto da meia-noite cai no dia errado). Lançamento digitado à mão grava o meio-dia de São Paulo (UTC-3, sem horário de verão desde 2019).
+- O banco impõe por `CHECK`: `income` > 0 e `expense` < 0. O valor digitado na UI é sempre a magnitude positiva; o sinal vem do `kind`.
+- `kind` não muda ao editar (ele fixa o sinal). Transferência edita valor, descrição e data nas duas pernas; para trocar as contas, exclua e recrie.
 
 - **Receita** (salário, bônus): `income`, positivo, numa conta corrente.
 - **Despesa Pix/débito**: `expense`, negativo, na conta corrente.
@@ -53,9 +62,11 @@ Campos: id, accountId, **amountCents assinado** (negativo = saída da conta, pos
 - **Parcelado**: gera N lançamentos, um por fatura futura, com o mesmo `installmentGroupId`. Divida o total em centavos e jogue a diferença de arredondamento na primeira parcela.
 
 ### Faturas (`invoices`)
-Campos: id, cardAccountId, referenceMonth (`YYYY-MM`), closingDate, dueDate, status (`open` | `closed` | `paid` | `partially_paid`).
+Campos: id, cardAccountId, referenceMonth (`YYYY-MM`), closingDate, dueDate. **O status (`open` | `closed` | `paid` | `partially_paid`) é derivado** por função pura em `src/domain`, a partir das datas e dos pagamentos; nunca é gravado.
 - A fatura de uma compra é definida pela data da compra versus o dia de fechamento: compra **no dia do fechamento ou depois** vai para a fatura seguinte. Isso fica numa função pura testada, incluindo virada de ano e meses curtos (dia 31 → último dia do mês).
-- Total da fatura = soma dos lançamentos dela. Pagar fatura = transferência da conta pagadora para o cartão, vinculada à fatura. Pagamento parcial é permitido.
+- `invoiceId` só existe em compras, estornos e encargos. **Total da fatura = soma dos lançamentos com esse `invoiceId`.**
+- Pagar fatura = transferência da conta pagadora para o cartão; a perna do cartão leva `paidInvoiceId` (não `invoiceId`, para o pagamento não zerar o total). Valor pago = soma dos `paidInvoiceId`. Pagamento parcial é permitido.
+- **Em aberto:** a regra "no dia do fechamento vai para a próxima" ainda não foi confirmada com faturas reais do Nubank e do Inter. Deixe o `invoiceId` editável à mão e valide com as primeiras faturas.
 
 ### Categorias (`categories`)
 id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?. Seed com categorias padrão brasileiras (Moradia, Energia, Internet, Educação, Mercado, Transporte, Saúde, Lazer, Assinaturas, Salário, Bônus, Rendimentos...).
@@ -74,8 +85,8 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 - Depois: posições por ativo via Pluggy (`/investments`).
 
 ### Saldos e visão do mês
-- Saldo da conta = initialBalance + soma dos lançamentos `confirmed` (e `pending`, mostrados separadamente).
-- **Patrimônio** = contas correntes + carteira + investimentos − faturas em aberto.
+- Saldo da conta = initialBalance + soma dos lançamentos `confirmed` ativos (e `pending`, mostrados separadamente). Lançamentos com `deletedAt` não contam.
+- **Patrimônio** = contas correntes + carteira + investimentos − faturas em aberto. **Contas `credit_card` ficam fora da soma de saldos** (a dívida já entra pelas faturas; somar os dois conta duas vezes).
 - **Visão do mês**: receitas (realizadas e previstas), despesas por categoria e por necessidade (obrigatória x opcional), faturas a vencer, ocorrências pendentes e **saldo projetado no fim do mês** = saldo atual + receitas previstas − despesas previstas − faturas a vencer no mês.
 
 ## Captura automática
@@ -89,10 +100,21 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 ## Regras gerais
 - **Dinheiro sempre em centavos inteiros.** Nunca float. Formate com `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })`.
 - Datas salvas em ISO; o cálculo de fatura e de mês usa o fuso `America/Sao_Paulo`.
-- Excluir é soft delete, e editar lançamento parcelado pergunta se aplica só nesta parcela ou nas seguintes.
+- Excluir é soft delete (`deletedAt`), toda consulta filtra por ele, e apagar uma perna de transferência apaga as duas. Índices únicos (ex.: `pluggyTransactionId`) valem só para linhas não apagadas.
+- Editar lançamento parcelado pergunta se aplica só nesta parcela ou nas seguintes (ainda bloqueado até a Fase 2).
 - Credenciais nunca em logs, no repositório ou no código.
-- Backup: exportar e importar o banco (arquivo `.db` ou JSON) a partir das configurações. Os dados só existem no aparelho.
+- Backup: exportar e importar o banco (arquivo `.db`) pela tela de Backup, já implementado com `expo-file-system`. Importar guarda antes uma cópia (`financeiro-before-import.db`) e recarrega o app. Os dados só existem no aparelho: desinstalar o app ou limpar os dados apaga tudo.
 - Uso pessoal: não adicione multiusuário, login ou backend sem pedir.
+
+## Convenções do código
+- **Mensagens ao usuário são em português** e vêm de `UserError` (`src/domain/errors.ts`). A UI mostra só a mensagem de `UserError`; qualquer outro erro vira "Algo deu errado" e vai para o log. Mensagens de validação ficam no domínio, não nas telas.
+- **Entrada de dinheiro é em centavos**: só dígitos, "10" vira 0,10 e "1023" vira 10,23 (`MoneyField`, `centsFromTyped`). Não existe parser de texto livre.
+- **Tema escuro apenas** (`userInterfaceStyle: dark`). Cores em `src/ui/theme.ts`; use o `Text` de `src/ui/form.tsx`, não o do React Native (o padrão dele é preto).
+- IDs são UUID v4 gerado em JS (`src/db/id.ts`), sem módulo nativo.
+- `src/db/schema.ts` é carregado pelo `drizzle-kit` em Node puro: **não importe módulo nativo ou do React Native nele**. Gere migrations com `npx drizzle-kit generate`.
+- Telas leem o banco de forma síncrona; consultas que dependem de migration só rodam depois que o layout raiz confirma as migrations (nunca no nível do módulo).
+- Serviços (`src/services`) validam contra o banco e inserem; a regra pura vive em `src/domain` com teste. O Jest roda em Node e não carrega o `expo-sqlite`, então serviço se valida no aparelho.
+- O Windows/Git Bash tem pegadinhas: não deixe `python -` esperando stdin e evite heredocs com aspas misturadas em comandos longos.
 
 ## Fluxo de trabalho
 - Passos pequenos, e cada fase rodando no aparelho antes da próxima.

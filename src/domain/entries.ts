@@ -91,3 +91,43 @@ export function buildTransfer(i: TransferInput): [out: NewTransaction, into: New
     { ...base, accountId: i.toAccountId, amountCents: i.amountCents, paidInvoiceId: i.paidInvoiceId },
   ];
 }
+
+export type EntryChanges = {
+  accountId: string;
+  /** Magnitude in cents, always positive; the sign stays tied to the entry's kind. */
+  amountCents: number;
+  description: string;
+  occurredAt: string;
+  categoryId?: string | null;
+  necessity?: "essential" | "optional" | null;
+};
+
+/** Fields an edit may change on an income/expense. `kind` never changes (it fixes the sign). */
+export function buildEntryUpdate(kind: "income" | "expense", c: EntryChanges) {
+  checkAmount(c.amountCents);
+  return {
+    accountId: c.accountId,
+    amountCents: kind === "expense" ? -c.amountCents : c.amountCents,
+    description: checkDescription(c.description),
+    occurredAt: c.occurredAt,
+    occurredOn: saoPauloDate(c.occurredAt),
+    categoryId: c.categoryId ?? null,
+    necessity: kind === "expense" ? (c.necessity ?? null) : null,
+  };
+}
+
+export type TransferChanges = { amountCents: number; description: string; occurredAt: string };
+
+/** Both legs of a transfer move together; accounts are not editable (delete and recreate instead). */
+export function buildTransferUpdate(c: TransferChanges) {
+  checkAmount(c.amountCents);
+  const common = {
+    description: checkDescription(c.description),
+    occurredAt: c.occurredAt,
+    occurredOn: saoPauloDate(c.occurredAt),
+  };
+  return {
+    out: { ...common, amountCents: -c.amountCents },
+    into: { ...common, amountCents: c.amountCents },
+  };
+}

@@ -9,6 +9,8 @@ export const colors = {
   primary: "#3b82f6",
   primaryText: "#ffffff",
   chipOn: "#1e3a8a",
+  income: "#4ade80",
+  expense: "#f87171",
   dangerBg: "#3b1519",
   dangerText: "#fca5a5",
 } as const;
