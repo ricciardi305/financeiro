@@ -143,3 +143,24 @@ export const investmentSnapshots = sqliteTable(
   },
   (t) => [uniqueIndex("investment_snapshots_account_date_uq").on(t.accountId, t.date)],
 );
+
+/**
+ * Notifications captured from the banks, as received. The Kotlin service inserts here directly (even with the
+ * app closed), so keep the column names in sync with `RawNotificationStore.kt`.
+ */
+export const rawNotifications = sqliteTable(
+  "raw_notifications",
+  {
+    id: id(),
+    packageName: text("package_name").notNull(),
+    title: text("title"),
+    text: text("text"),
+    bigText: text("big_text"),
+    postedAt: text("posted_at").notNull(), // ISO instant
+    sbnKey: text("sbn_key").notNull(),
+    parsed: integer("parsed", { mode: "boolean" }).notNull().default(false),
+    parseError: text("parse_error"),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [uniqueIndex("raw_notifications_key_posted_uq").on(t.sbnKey, t.postedAt)],
+);

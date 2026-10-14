@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert, View } from "react-native";
+import { useRouter } from "expo-router";
 import { errorMessage } from "@/domain/errors";
 import { exportBackup, importBackup } from "@/services/backup";
 import { Button, Text } from "@/ui/form";
@@ -7,6 +8,7 @@ import { colors, spacing } from "@/ui/theme";
 import { toast } from "@/ui/toast";
 
 export default function Settings() {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   const run = async (job: () => Promise<void>, errorTitle: string) => {
@@ -48,6 +50,7 @@ export default function Settings() {
       </Text>
       <Button title="Exportar backup (.db)" onPress={doExport} />
       <Button title="Importar backup" onPress={doImport} danger />
+      <Button secondary title="Notificações capturadas" onPress={() => router.push("/notifications")} />
     </View>
   );
 }
