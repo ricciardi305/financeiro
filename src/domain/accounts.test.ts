@@ -44,3 +44,10 @@ test("institution \"other\" needs a typed name; other institutions drop it", () 
   expect(validateAccount({ ...checking, institution: "other", institutionName: " C6 " }).institutionName).toBe("C6");
   expect(validateAccount({ ...checking, institution: "mercadopago", institutionName: "x" }).institutionName).toBeUndefined();
 });
+
+test("card finals: several per card, optional, exactly 4 numbers each, deduplicated, cards only", () => {
+  const card = { name: "Cartão", institution: "inter" as const, type: "credit_card" as const, initialBalanceCents: 0, closingDay: 5, dueDay: 12, paymentAccountId: "acc" };
+  expect(validateAccount({ ...card, cardFinals: ["1234", "5678", "1234"] }).cardFinals).toEqual(["1234", "5678"]);
+  expect(() => validateAccount({ ...card, cardFinals: ["12"] })).toThrow("4 números");
+  expect(() => validateAccount({ ...checking, cardFinals: ["1234"] })).toThrow();
+});

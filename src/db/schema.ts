@@ -24,6 +24,7 @@ export const accounts = sqliteTable("accounts", {
   archived: integer("archived", { mode: "boolean" }).notNull().default(false),
   pluggyAccountId: text("pluggy_account_id"),
   // credit_card only
+  cardLast4: text("card_last4"), // matches captured notifications to this card
   closingDay: integer("closing_day"),
   dueDay: integer("due_day"),
   limitCents: integer("limit_cents"),
@@ -111,6 +112,7 @@ export const transactions = sqliteTable(
     occurrenceId: text("occurrence_id"), // FK added with the occurrences table
     pluggyTransactionId: text("pluggy_transaction_id"),
     rawNotificationId: text("raw_notification_id"),
+    refundOfId: text("refund_of_id"), // on a captured card refund: the purchase it reverses
     notes: text("notes"),
     createdAt: createdAt(),
     deletedAt: text("deleted_at"),
@@ -163,4 +165,17 @@ export const rawNotifications = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (t) => [uniqueIndex("raw_notifications_key_posted_uq").on(t.sbnKey, t.postedAt)],
+);
+
+/** Learned from the user: a merchant (or sender) name, normalized, maps to a category. */
+export const merchantRules = sqliteTable(
+  "merchant_rules",
+  {
+    id: id(),
+    pattern: text("pattern").notNull(), // normalized merchant name, exact match
+    categoryId: text("category_id").notNull().references(() => categories.id),
+    necessity: text("necessity", { enum: ["essential", "optional"] }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("merchant_rules_pattern_uq").on(t.pattern)],
 );

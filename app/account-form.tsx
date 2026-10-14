@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { AccountType, Institution } from "@/domain/accounts";
+import { parseFinals, type AccountType, type Institution } from "@/domain/accounts";
 import { errorMessage } from "@/domain/errors";
 import { createAccount, getAccount, listAccounts, setArchived, updateAccount } from "@/services/accounts";
 import { Button, Chips, Field, FormFooter, MoneyField } from "@/ui/form";
@@ -27,6 +27,7 @@ export default function AccountForm() {
   const [institutionName, setInstitutionName] = useState(existing?.institutionName ?? "");
   const [type, setType] = useState<AccountType>(existing?.type ?? "checking");
   const [balance, setBalance] = useState(existing?.initialBalanceCents ?? 0);
+  const [cardFinals, setCardFinals] = useState(parseFinals(existing?.cardLast4).join(" "));
   const [closingDay, setClosingDay] = useState(existing?.closingDay?.toString() ?? "");
   const [dueDay, setDueDay] = useState(existing?.dueDay?.toString() ?? "");
   const [limit, setLimit] = useState(existing?.limitCents ?? 0);
@@ -39,7 +40,7 @@ export default function AccountForm() {
       const initialBalanceCents = existing ? existing.initialBalanceCents : balance;
       const limitCents = limit > 0 ? limit : undefined;
       const card = isCard
-        ? { closingDay: Number(closingDay), dueDay: Number(dueDay), limitCents, paymentAccountId: payerId }
+        ? { cardFinals: cardFinals.split(/[^\d]+/).filter(Boolean), closingDay: Number(closingDay), dueDay: Number(dueDay), limitCents, paymentAccountId: payerId }
         : {};
       if (existing) updateAccount(existing.id, { name, institution, institutionName, ...card });
       else createAccount({ name, institution, institutionName, type, initialBalanceCents, ...card });
@@ -84,6 +85,12 @@ export default function AccountForm() {
         />
         {isCard && (
           <>
+            <Field
+              label="Finais dos cartões (4 números cada; separe com espaço)"
+              value={cardFinals}
+              onChangeText={(t) => setCardFinals(t.replace(/[^\d ]/g, ""))}
+              keyboardType="numeric"
+            />
             <Field label="Dia de fechamento" value={closingDay} onChangeText={setClosingDay} keyboardType="numeric" />
             <Field label="Dia de vencimento" value={dueDay} onChangeText={setDueDay} keyboardType="numeric" />
             <MoneyField label="Limite (opcional)" cents={limit} onChangeCents={setLimit} />

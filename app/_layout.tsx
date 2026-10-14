@@ -1,15 +1,25 @@
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
-import { View } from "react-native";
+import { AppState, View } from "react-native";
 import { db } from "@/db/client";
 import migrations from "@/db/migrations/migrations";
 import { seedCategories } from "@/db/seeds";
 import { generateOccurrences } from "@/services/recurrences";
 import { Text } from "@/ui/form";
+import { syncInbox } from "@/ui/inbox";
 import { colors, spacing } from "@/ui/theme";
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
+
+  // Captured notifications become pending transactions on open and whenever the app returns to the foreground.
+  useEffect(() => {
+    if (!success) return;
+    syncInbox();
+    const sub = AppState.addEventListener("change", (s) => s === "active" && syncInbox());
+    return () => sub.remove();
+  }, [success]);
 
   if (error) {
     return (

@@ -19,6 +19,16 @@ Itens conhecidos que ficaram para depois, com o motivo e quando fazem sentido. A
 | **Reajuste de valor com histórico** | Editar a conta fixa muda o valor das ocorrências futuras não pagas; não guarda histórico de reajustes. | Se virar necessário acompanhar variação (ex.: aluguel). |
 | **Ocorrências retroativas** | Criar uma conta fixa com início no passado gera todas as ocorrências desde lá como previstas/atrasadas. | Se incomodar, perguntar "marcar meses passados como pulados". |
 
+## Fase 7 (captura): pendências
+
+| Item | Situação atual | Quando fazer |
+|---|---|---|
+| **Amostra de estorno do Inter** | Só o estorno do Nubank tem parser. | Quando chegar o primeiro estorno do Inter, exportar e acrescentar o parser e a fixture. |
+| **Ajustar a fatura na revisão** | A compra capturada cai na fatura pela regra do fechamento; não há ‹ › na tela de revisão. | Junto da confirmação da regra do Nubank: se errar, excluir e relançar à mão, ou mover a fatura na revisão. |
+| **Estorno de compra parcelada** | O estorno reverte só a parcela encontrada (a mais recente do estabelecimento). | Quando aparecer o primeiro caso real. |
+| **Vincular entrada/compra capturada a uma conta fixa** | A captura não olha as ocorrências do mês. | Sugerir a ocorrência com mesmo valor e data próxima na revisão. |
+| **Várias contas correntes da mesma instituição** | A entrada capturada fica esperando (a conta é ambígua). | Casar pelo final da conta que o Inter informa ("***6060-3"), com um campo na conta. |
+
 ## Geral
 
 | Item | Situação atual | Quando fazer |

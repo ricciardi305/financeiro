@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ColorValue } from "react-native";
 import { Tabs, useRouter } from "expo-router";
 import { HeaderAction } from "@/ui/form";
+import { useInbox } from "@/ui/inbox";
 import { colors } from "@/ui/theme";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -11,6 +12,7 @@ const icon = (name: IconName) => ({ color, size }: { color: ColorValue; size: nu
 
 export default function TabsLayout() {
   const router = useRouter();
+  const pending = useInbox((s) => s.count);
   return (
     <Tabs
       screenOptions={{
@@ -45,6 +47,15 @@ export default function TabsLayout() {
           tabBarLabel: "Mês",
           tabBarIcon: icon("calendar-outline"),
           headerRight: () => <HeaderAction symbol="+" onPress={() => router.push("/recurrence-form")} />,
+        }}
+      />
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: "Caixa de entrada",
+          tabBarLabel: "Caixa",
+          tabBarIcon: icon("mail-unread-outline"),
+          tabBarBadge: pending > 0 ? pending : undefined,
         }}
       />
       <Tabs.Screen name="settings" options={{ title: "Backup", tabBarIcon: icon("save-outline") }} />

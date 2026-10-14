@@ -2,7 +2,7 @@ import { and, eq, isNull, sum } from "drizzle-orm";
 import { db } from "@/db/client";
 import { newId } from "@/db/id";
 import { accounts, transactions } from "@/db/schema";
-import { type AccountInput, validateAccount } from "@/domain/accounts";
+import { type AccountInput, formatFinals, parseFinals, validateAccount } from "@/domain/accounts";
 import { accountBalance, type Balance } from "@/domain/balance";
 import { UserError } from "@/domain/errors";
 import { investmentValueOf } from "./investments";
@@ -11,7 +11,7 @@ export type Account = typeof accounts.$inferSelect;
 
 /** Fields that can change after creation. `type` and `initialBalanceCents` are fixed. */
 export type AccountPatch = Partial<
-  Pick<AccountInput, "name" | "institution" | "institutionName" | "pluggyAccountId" | "closingDay" | "dueDay" | "limitCents" | "paymentAccountId">
+  Pick<AccountInput, "name" | "institution" | "institutionName" | "pluggyAccountId" | "cardFinals" | "closingDay" | "dueDay" | "limitCents" | "paymentAccountId">
 >;
 
 function requirePaymentAccount(id: string | undefined): void {
@@ -19,6 +19,16 @@ function requirePaymentAccount(id: string | undefined): void {
   const p = db.select().from(accounts).where(eq(accounts.id, id)).get();
   if (!p || p.type !== "checking" || p.archived) {
     throw new UserError("A conta que paga a fatura precisa ser uma conta corrente ativa.");
+  }
+}
+
+/** A final identifies a card in notifications, so two invoices cannot share one. */
+function requireUniqueFinals(finals: string[] | undefined, exceptId?: string): void {
+  if (!finals?.length) return;
+  for (const c of db.select().from(accounts).where(eq(accounts.type, "credit_card")).all()) {
+    if (c.id === exceptId || c.archived) continue;
+    const clash = parseFinals(c.cardLast4).find((f) => finals.includes(f));
+    if (clash) throw new UserError(`O final ${clash} já está no cartão "${c.name}".`);
   }
 }
 
@@ -31,8 +41,11 @@ export function getAccount(id: string): Account {
 export function createAccount(input: AccountInput): string {
   const v = validateAccount(input);
   requirePaymentAccount(v.paymentAccountId);
+  requireUniqueFinals(v.cardFinals);
   const id = newId();
-  db.insert(accounts).values({ ...v, id }).run();
+  db.insert(accounts)
+    .values({ ...v, id, cardLast4: v.cardFinals?.length ? formatFinals(v.cardFinals) : null })
+    .run();
   return id;
 }
 
@@ -45,6 +58,7 @@ export function updateAccount(id: string, patch: AccountPatch): void {
     type: cur.type,
     initialBalanceCents: cur.initialBalanceCents,
     pluggyAccountId: cur.pluggyAccountId ?? undefined,
+    cardFinals: cur.cardLast4 ? parseFinals(cur.cardLast4) : undefined,
     closingDay: cur.closingDay ?? undefined,
     dueDay: cur.dueDay ?? undefined,
     limitCents: cur.limitCents ?? undefined,
@@ -52,12 +66,14 @@ export function updateAccount(id: string, patch: AccountPatch): void {
     ...patch,
   });
   if (patch.paymentAccountId) requirePaymentAccount(patch.paymentAccountId);
+  requireUniqueFinals(merged.cardFinals, id);
   db.update(accounts)
     .set({
       name: merged.name,
       institution: merged.institution,
       institutionName: merged.institutionName ?? null,
       pluggyAccountId: merged.pluggyAccountId ?? null,
+      cardLast4: merged.cardFinals?.length ? formatFinals(merged.cardFinals) : null,
       closingDay: merged.closingDay ?? null,
       dueDay: merged.dueDay ?? null,
       limitCents: merged.limitCents ?? null,

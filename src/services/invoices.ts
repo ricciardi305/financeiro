@@ -67,8 +67,12 @@ export type CardPurchaseInput = {
   categoryId?: string;
   necessity?: "essential" | "optional";
   /** Set when the purchase is the payment of a recurring bill. */
-  source?: "manual" | "recurrence";
+  source?: "manual" | "recurrence" | "notification";
   occurrenceId?: string;
+  /** Captured purchases start as pending and keep what the notification called the merchant. */
+  status?: "pending" | "confirmed";
+  merchantRaw?: string;
+  rawNotificationId?: string;
 };
 
 /** Which invoices a purchase would hit, for previews. */
@@ -121,6 +125,9 @@ export function createCardPurchase(input: CardPurchaseInput): { ids: string[]; g
         invoiceId: ensureInvoice(card.id, part.referenceMonth),
         source: input.source,
         occurrenceId: input.occurrenceId,
+        status: input.status,
+        merchantRaw: input.merchantRaw,
+        rawNotificationId: input.rawNotificationId,
       });
       const id = newId();
       ids.push(id);
