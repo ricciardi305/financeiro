@@ -5,9 +5,88 @@ import { isoDateToBr, monthLabel, shiftMonth } from "@/domain/dates";
 import { saoPauloDate } from "@/domain/entries";
 import { formatCents } from "@/domain/money";
 import { totalsForKind } from "@/domain/recurrences";
+import { getMonthOverview, type MonthOverview } from "@/services/overview";
 import { ensureOccurrence, listMonthOccurrences, type OccurrenceRow } from "@/services/recurrences";
 import { Button, EmptyState, Text } from "@/ui/form";
 import { colors, ripple, spacing, TAP } from "@/ui/theme";
+
+const card = {
+  padding: spacing.lg,
+  borderWidth: 1,
+  borderColor: colors.border,
+  backgroundColor: colors.surface,
+  borderRadius: spacing.sm,
+  gap: spacing.xs,
+} as const;
+
+const line = (label: string, value: string, color: string = colors.text) => (
+  <View key={label} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+    <Text style={{ color: colors.muted }}>{label}</Text>
+    <Text style={{ color }}>{value}</Text>
+  </View>
+);
+
+/** Realized income and spending, where the money went, and (current month) the projected end balance. */
+function Overview({ o }: { o: MonthOverview }) {
+  const { spending: s } = o;
+  const max = s.byCategory[0]?.cents ?? 0;
+  return (
+    <>
+      <View style={card}>
+        {o.projectedEndCents !== null && (
+          <>
+            <Text style={{ color: colors.muted }}>Saldo previsto no fim do mês</Text>
+            <Text style={{ fontSize: 32, fontWeight: "700", color: o.projectedEndCents < 0 ? colors.expense : colors.text }}>
+              {formatCents(o.projectedEndCents)}
+            </Text>
+            <Text style={{ color: colors.muted }}>
+              Saldo atual + receitas e contas fixas que faltam − faturas a vencer.
+            </Text>
+          </>
+        )}
+        {line("Receitas recebidas", formatCents(o.incomeCents), colors.income)}
+        {line("Despesas do mês", formatCents(s.totalCents), colors.expense)}
+        {o.projectedEndCents !== null && line("Contas fixas a pagar", formatCents(o.pendingExpenseCents))}
+        {o.projectedEndCents !== null && o.pendingIncomeCents > 0 && line("Receitas a receber", formatCents(o.pendingIncomeCents))}
+      </View>
+
+      {o.dueInvoices.length > 0 && (
+        <View style={card}>
+          <Text style={{ fontWeight: "600" }}>Faturas a pagar</Text>
+          {o.dueInvoices.map((i) =>
+            line(`${i.cardName} · vence ${isoDateToBr(i.dueDate).slice(0, 5)}`, formatCents(i.remainingCents)),
+          )}
+        </View>
+      )}
+
+      {s.byCategory.length > 0 && (
+        <View style={card}>
+          <Text style={{ fontWeight: "600" }}>Gastos por categoria</Text>
+          {s.byCategory.map((c) => (
+            <View key={c.name} style={{ gap: 2, marginTop: spacing.xs }}>
+              {line(c.name, formatCents(c.cents))}
+              <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.border }}>
+                <View
+                  style={{
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: colors.primary,
+                    width: `${max > 0 ? Math.max(2, Math.round((Math.max(c.cents, 0) / max) * 100)) : 0}%`,
+                  }}
+                />
+              </View>
+            </View>
+          ))}
+          <View style={{ marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
+            {line("Obrigatórias", formatCents(s.byNecessity.essentialCents))}
+            {line("Opcionais", formatCents(s.byNecessity.optionalCents))}
+            {s.byNecessity.unclassifiedCents !== 0 && line("Sem classificação", formatCents(s.byNecessity.unclassifiedCents))}
+          </View>
+        </View>
+      )}
+    </>
+  );
+}
 
 const STATE_LABEL = { planned: "Prevista", late: "Atrasada", paid: "Paga", skipped: "Pulada" } as const;
 
@@ -23,7 +102,14 @@ export default function MonthScreen() {
   const [month, setMonth] = useState(() => saoPauloDate(new Date().toISOString()).slice(0, 7));
   const [items, setItems] = useState<OccurrenceRow[]>([]);
 
-  useFocusEffect(useCallback(() => setItems(listMonthOccurrences(month)), [month]));
+  const [overview, setOverview] = useState<MonthOverview>();
+
+  useFocusEffect(
+    useCallback(() => {
+      setItems(listMonthOccurrences(month));
+      setOverview(getMonthOverview(month));
+    }, [month]),
+  );
 
   const asItems = items.map((i) => ({
     kind: i.kind,
@@ -104,6 +190,8 @@ export default function MonthScreen() {
           <Text style={{ fontSize: 18, fontWeight: "600" }}>{monthLabel(month)}</Text>
           {arrow("›", 1)}
         </View>
+
+        {overview && <Overview o={overview} />}
 
         {items.length === 0 ? (
           <EmptyState

@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { formatCents } from "@/domain/money";
+import { getNetWorth } from "@/services/overview";
+import type { NetWorth } from "@/domain/overview";
 import { type AccountWithBalance, listAccounts } from "@/services/accounts";
 import { EmptyState, Text } from "@/ui/form";
 import { INSTITUTION_LABEL, TYPE_LABEL } from "@/ui/labels";
@@ -10,11 +12,13 @@ import { colors, ripple, spacing } from "@/ui/theme";
 export default function Accounts() {
   const router = useRouter();
   const [items, setItems] = useState<AccountWithBalance[]>([]);
+  const [worth, setWorth] = useState<NetWorth>();
   const [showArchived, setShowArchived] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       setItems(listAccounts({ includeArchived: showArchived }));
+      setWorth(getNetWorth());
     }, [showArchived]),
   );
 
@@ -24,6 +28,29 @@ export default function Accounts() {
         data={items}
         keyExtractor={(a) => a.id}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+        ListHeaderComponent={
+          worth && items.length > 0 ? (
+            <View
+              style={{
+                padding: spacing.lg,
+                marginBottom: spacing.sm,
+                borderWidth: 1,
+                borderColor: colors.primary,
+                backgroundColor: colors.surface,
+                borderRadius: spacing.sm,
+                gap: spacing.xs,
+              }}
+            >
+              <Text style={{ color: colors.muted }}>Patrimônio</Text>
+              <Text style={{ fontSize: 32, fontWeight: "700", color: worth.netCents < 0 ? colors.expense : colors.text }}>
+                {formatCents(worth.netCents)}
+              </Text>
+              <Text style={{ color: colors.muted }}>
+                Contas {formatCents(worth.assetsCents)} − faturas em aberto {formatCents(worth.debtCents)}
+              </Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <EmptyState
             message="Nenhuma conta ainda."

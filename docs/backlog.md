@@ -8,7 +8,6 @@ Itens conhecidos que ficaram para depois, com o motivo e quando fazem sentido. A
 |---|---|---|
 | **Confirmar a regra de fechamento do Nubank** | A regra "compra no dia do fechamento vai para a fatura seguinte" está confirmada só para o **Inter**. No Nubank a fatura é ajustável à mão (‹ › na tela de nova compra). | Na primeira fatura real do Nubank: conferir 2 ou 3 compras perto do corte e, se a regra for diferente, tornar a regra configurável por cartão. |
 | **Alerta de fatura vencendo** | A tela mostra "Vencida", sem notificação. | Está em "Depois" no plano (alertas). Exige notificação local. |
-| **Fatura em aberto no patrimônio** | A lista de Contas mostra o cartão como saldo negativo. | Fase 4 (visão do mês e patrimônio). |
 | **Mudar a data de uma compra no cartão** | Bloqueado: a data define a fatura. | Se virar incômodo, permitir e recalcular a fatura (respeitando o ajuste manual). |
 
 ## Fase 3 (contas fixas): pendências

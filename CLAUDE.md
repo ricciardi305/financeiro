@@ -96,7 +96,9 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 ### Saldos e visão do mês
 - Saldo da conta = initialBalance + soma dos lançamentos `confirmed` ativos (e `pending`, mostrados separadamente). Lançamentos com `deletedAt` não contam.
 - **Patrimônio** = contas correntes + carteira + investimentos − faturas em aberto. **Contas `credit_card` ficam fora da soma de saldos** (a dívida já entra pelas faturas; somar os dois conta duas vezes).
-- **Visão do mês**: receitas (realizadas e previstas), despesas por categoria e por necessidade (obrigatória x opcional), faturas a vencer, ocorrências pendentes e **saldo projetado no fim do mês** = saldo atual + receitas previstas − despesas previstas − faturas a vencer no mês.
+- **Visão do mês** (aba Mês, `getMonthOverview`): receitas recebidas e despesas do mês, despesas por categoria (estornos abatem a categoria) e por necessidade, faturas a pagar e **saldo projetado no fim do mês** = saldo líquido de contas correntes e carteira (investimento fora) + receitas fixas que faltam − contas fixas que faltam − faturas não pagas com vencimento até o fim do mês (atrasadas incluídas). O saldo projetado só aparece no mês corrente.
+- Compra no cartão conta como despesa na **data da compra** (parcelado: uma parcela por mês); pagar fatura é transferência e não entra, então nada conta duas vezes. A regra pura está em `src/domain/overview.ts`.
+- **Patrimônio** aparece no topo da aba Contas. Dívida de cartão = restante das faturas até a aberta hoje; parcelas futuras ainda não são dívida.
 
 ## Captura automática
 - **Notificações** (tempo real): o serviço nativo grava em `raw_notifications` (packageName, title, text, bigText, postedAt, parsed, parseError) direto no SQLite, sem depender do JS vivo. Pacotes: Nubank `com.nu.production`, Inter `br.com.intermedium`, confirmados no aparelho com `adb shell pm list packages`.

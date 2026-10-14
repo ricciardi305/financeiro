@@ -270,6 +270,47 @@ function detailFor(card: Card, inv: typeof invoices.$inferSelect | undefined, re
   return { ...base, card: cardInfo, lines, payments };
 }
 
+/**
+ * Unpaid amount of every invoice up to the one open today, per active card. Later invoices (future
+ * installments) are not debt yet. Feeds net worth.
+ */
+export function openInvoiceDebtCents(): number {
+  const sums = sumsByInvoice();
+  const cards = db.select().from(accounts).where(eq(accounts.type, "credit_card")).all().filter((c) => !c.archived);
+  let debt = 0;
+  for (const card of cards) {
+    const upTo = currentInvoiceMonth(card.id);
+    for (const inv of db.select().from(invoices).where(eq(invoices.cardAccountId, card.id)).all()) {
+      if (inv.referenceMonth <= upTo) {
+        debt += summarizeInvoice([sums.charge.get(inv.id) ?? 0], [sums.paid.get(inv.id) ?? 0]).remainingCents;
+      }
+    }
+  }
+  return debt;
+}
+
+export type DueInvoice = { id: string; cardName: string; referenceMonth: string; dueDate: string; remainingCents: number };
+
+/** Unpaid invoices that fall due before `beforeDate` (YYYY-MM-DD), overdue ones included. */
+export function invoicesDueBefore(beforeDate: string): DueInvoice[] {
+  const sums = sumsByInvoice();
+  return db
+    .select({ inv: invoices, cardName: accounts.name, archived: accounts.archived })
+    .from(invoices)
+    .innerJoin(accounts, eq(accounts.id, invoices.cardAccountId))
+    .all()
+    .filter((r) => !r.archived && r.inv.dueDate < beforeDate)
+    .map((r) => ({
+      id: r.inv.id,
+      cardName: r.cardName,
+      referenceMonth: r.inv.referenceMonth,
+      dueDate: r.inv.dueDate,
+      remainingCents: summarizeInvoice([sums.charge.get(r.inv.id) ?? 0], [sums.paid.get(r.inv.id) ?? 0]).remainingCents,
+    }))
+    .filter((r) => r.remainingCents > 0)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+}
+
 /** The month the card's open invoice closes in: where the carousel starts. */
 export function currentInvoiceMonth(cardAccountId: string): string {
   return invoiceMonthFor(today(), requireCard(cardAccountId).closingDay);
