@@ -33,7 +33,11 @@ export default function Accounts() {
         }
         renderItem={({ item: a }) => (
           <Pressable
-            onPress={() => router.push({ pathname: "/account-form", params: { id: a.id } })}
+            onPress={() =>
+              a.type === "credit_card"
+                ? router.push({ pathname: "/card/[id]", params: { id: a.id } })
+                : router.push({ pathname: "/account-form", params: { id: a.id } })
+            }
             android_ripple={ripple}
             style={{
               padding: spacing.lg,

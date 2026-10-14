@@ -10,6 +10,7 @@ import {
   buildEntryUpdate,
   buildTransfer,
   buildTransferUpdate,
+  saoPauloDate,
   type EntryChanges,
   type EntryInput,
   type TransferChanges,
@@ -23,7 +24,7 @@ function requireAccount(id: string) {
   return a;
 }
 
-function requireCategory(categoryId: string | null | undefined, kind: "income" | "expense"): void {
+export function requireCategory(categoryId: string | null | undefined, kind: "income" | "expense"): void {
   if (!categoryId) return;
   const c = db.select().from(categories).where(eq(categories.id, categoryId)).get();
   if (!c) throw new Error(`category not found: ${categoryId}`);
@@ -33,7 +34,7 @@ function requireCategory(categoryId: string | null | undefined, kind: "income" |
 export function createEntry(input: EntryInput): string {
   const account = requireAccount(input.accountId);
   if (account.type === "credit_card" && !input.invoiceId) {
-    throw new Error("card purchases need an invoice (phase 2)");
+    throw new UserError("Compras no cartão são lançadas pela tela de compra no cartão.");
   }
   requireCategory(input.categoryId, input.kind);
   const id = newId();
@@ -127,6 +128,10 @@ export type TransactionForEdit = {
   occurredOn: string;
   categoryId: string | null;
   necessity: "essential" | "optional" | null;
+  /** Set for credit-card purchases; their account and date are fixed. */
+  invoiceId: string | null;
+  installmentNumber: number | null;
+  installmentTotal: number | null;
 };
 
 function activeLegs(t: typeof transactions.$inferSelect) {
@@ -150,11 +155,13 @@ export function getTransactionForEdit(id: string): TransactionForEdit {
       id, kind: "transfer", accountId: out.accountId, toAccountId: into.accountId,
       amountCents: into.amountCents, description: t.description, occurredAt: t.occurredAt,
       occurredOn: t.occurredOn, categoryId: null, necessity: null,
+      invoiceId: null, installmentNumber: null, installmentTotal: null,
     };
   }
   return {
     id, kind: t.kind, accountId: t.accountId, amountCents: Math.abs(t.amountCents), description: t.description,
     occurredAt: t.occurredAt, occurredOn: t.occurredOn, categoryId: t.categoryId, necessity: t.necessity,
+    invoiceId: t.invoiceId, installmentNumber: t.installmentNumber, installmentTotal: t.installmentTotal,
   };
 }
 
@@ -162,10 +169,15 @@ export function updateEntry(id: string, changes: EntryChanges): void {
   const t = db.select().from(transactions).where(and(eq(transactions.id, id), isNull(transactions.deletedAt))).get();
   if (!t) throw new UserError("Lançamento não encontrado.");
   if (t.kind !== "income" && t.kind !== "expense") throw new UserError("Este tipo de lançamento não pode ser editado aqui.");
-  if (t.installmentGroupId) throw new UserError("Edição de parcelados chega com a Fase 2.");
+  if (t.installmentGroupId) {
+    throw new UserError("Compra parcelada não pode ser editada: exclua a parcela e lance de novo.");
+  }
+  if (t.invoiceId && saoPauloDate(changes.occurredAt) !== t.occurredOn) {
+    throw new UserError("Para mudar a data de uma compra no cartão, exclua e lance de novo.");
+  }
   if (changes.accountId !== t.accountId) {
     const target = requireAccount(changes.accountId);
-    if (target.type === "credit_card") throw new UserError("Compras no cartão exigem fatura (Fase 2).");
+    if (target.type === "credit_card") throw new UserError("Compras no cartão ficam na fatura do cartão e não mudam de conta.");
   }
   requireCategory(changes.categoryId, t.kind);
   db.update(transactions).set(buildEntryUpdate(t.kind, changes)).where(eq(transactions.id, id)).run();

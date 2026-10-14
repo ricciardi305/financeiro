@@ -40,6 +40,21 @@ export function monthRange(ym: string): { from: string; to: string } {
   return { from: `${ym}-01`, to: `${shiftMonth(ym, 1)}-01` };
 }
 
+/** Number of days in a "YYYY-MM" month. */
+export function daysInMonth(ym: string): number {
+  return new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate();
+}
+
+/** "YYYY-MM-DD" for `day` of the month, clamped to the month's last day (31 in April -> 30). */
+export function clampedDate(ym: string, day: number): string {
+  return `${ym}-${String(Math.min(day, daysInMonth(ym))).padStart(2, "0")}`;
+}
+
+/** The same day `n` months later, clamped to the month's last day (Jan 31 + 1 -> Feb 28/29). */
+export function addMonthsClamped(isoDate: string, n: number): string {
+  return clampedDate(shiftMonth(isoDate.slice(0, 7), n), Number(isoDate.slice(8, 10)));
+}
+
 /** "outubro de 2026". */
 export function monthLabel(ym: string): string {
   return `${MONTHS[Number(ym.slice(5, 7)) - 1]} de ${ym.slice(0, 4)}`;

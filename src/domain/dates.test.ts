@@ -1,5 +1,25 @@
 import { saoPauloDate } from "./entries";
-import { isoDateToBr, maskDate, monthLabel, monthRange, noonInSaoPaulo, parseBrDate, shiftMonth } from "./dates";
+import {
+  addMonthsClamped,
+  clampedDate,
+  daysInMonth,
+  isoDateToBr,
+  maskDate,
+  monthLabel,
+  monthRange,
+  noonInSaoPaulo,
+  parseBrDate,
+  shiftMonth,
+} from "./dates";
+
+test("month length, clamped days and month shifts keep the calendar valid", () => {
+  expect(daysInMonth("2026-02")).toBe(28);
+  expect(daysInMonth("2028-02")).toBe(29);
+  expect(daysInMonth("2026-12")).toBe(31);
+  expect(clampedDate("2026-04", 31)).toBe("2026-04-30");
+  expect(addMonthsClamped("2026-01-31", 1)).toBe("2026-02-28");
+  expect(addMonthsClamped("2026-12-15", 2)).toBe("2027-02-15");
+});
 
 test("mask shapes digits as dd/mm/aaaa", () => {
   expect(maskDate("1")).toBe("1");
