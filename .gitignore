@@ -15,3 +15,6 @@ graphify-out/
 expo-env.d.ts
 # @end expo-clibuild.log
 metro.log
+
+# Gradle output of local native modules
+modules/*/android/build/
