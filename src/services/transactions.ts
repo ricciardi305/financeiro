@@ -175,7 +175,7 @@ export function updateEntry(id: string, changes: EntryChanges): void {
   if (!t) throw new UserError("Lançamento não encontrado.");
   if (t.kind !== "income" && t.kind !== "expense") throw new UserError("Este tipo de lançamento não pode ser editado aqui.");
   if (t.installmentGroupId) {
-    throw new UserError("Compra parcelada não pode ser editada: exclua a parcela e lance de novo.");
+    throw new UserError("Compra parcelada é editada pela parcela (updateInstallments).");
   }
   if (t.invoiceId && saoPauloDate(changes.occurredAt) !== t.occurredOn) {
     throw new UserError("Para mudar a data de uma compra no cartão, exclua e lance de novo.");
@@ -186,6 +186,42 @@ export function updateEntry(id: string, changes: EntryChanges): void {
   }
   requireCategory(changes.categoryId, t.kind);
   db.update(transactions).set(buildEntryUpdate(t.kind, changes)).where(eq(transactions.id, id)).run();
+}
+
+export type InstallmentScope = "this" | "following";
+
+/** `this` alone, or this one and every later installment of the same purchase. */
+function installmentScope(id: string, scope: InstallmentScope) {
+  const t = db.select().from(transactions).where(and(eq(transactions.id, id), isNull(transactions.deletedAt))).get();
+  if (!t || !t.installmentGroupId || t.installmentNumber === null) throw new UserError("Parcela não encontrada.");
+  return {
+    t,
+    where: and(
+      eq(transactions.installmentGroupId, t.installmentGroupId),
+      isNull(transactions.deletedAt),
+      scope === "this" ? eq(transactions.id, id) : gte(transactions.installmentNumber, t.installmentNumber),
+    ),
+  };
+}
+
+/** Changes the per-installment amount, description, category and necessity. The date (and so the invoice) stays. */
+export function updateInstallments(
+  id: string,
+  scope: InstallmentScope,
+  c: { amountCents: number; description: string; categoryId?: string | null; necessity?: "essential" | "optional" | null },
+): void {
+  const { t, where } = installmentScope(id, scope);
+  requireCategory(c.categoryId, "expense");
+  const u = buildEntryUpdate("expense", { ...c, accountId: t.accountId, occurredAt: t.occurredAt });
+  db.update(transactions)
+    .set({ amountCents: u.amountCents, description: u.description, categoryId: u.categoryId, necessity: u.necessity })
+    .where(where)
+    .run();
+}
+
+export function deleteInstallments(id: string, scope: InstallmentScope): void {
+  const { where } = installmentScope(id, scope);
+  db.update(transactions).set({ deletedAt: new Date().toISOString() }).where(where).run();
 }
 
 /** Edits amount, description and date of both legs at once. */

@@ -55,6 +55,24 @@ export default function CardScreen() {
       },
     ]);
 
+  const confirmDeleteRefund = (lineId: string, amountCents: number) =>
+    Alert.alert("Excluir estorno?", `O estorno de ${formatCents(amountCents)} será removido da fatura.`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: () => {
+          try {
+            deleteTransaction(lineId);
+            setVersion((v) => v + 1);
+            toast("Estorno excluído");
+          } catch (e) {
+            Alert.alert("Não foi possível excluir", errorMessage(e));
+          }
+        },
+      },
+    ]);
+
   const badge = inv ? statusBadge(inv) : undefined;
 
   return (
@@ -139,6 +157,12 @@ export default function CardScreen() {
               />
             )}
 
+            <Button
+              secondary
+              title="Lançar estorno ou encargo"
+              onPress={() => router.push({ pathname: "/invoice-adjustment", params: { cardId: id, month } })}
+            />
+
             <View style={{ gap: spacing.sm }}>
               <Text style={{ fontWeight: "600" }}>Compras</Text>
               {inv.lines.length === 0 && (
@@ -147,7 +171,12 @@ export default function CardScreen() {
               {inv.lines.map((l) => (
                 <Pressable
                   key={l.id}
-                  onPress={() => router.push({ pathname: "/entry-form", params: { id: l.id } })}
+                  // A refund (positive line) is not editable; long press deletes it.
+                  onPress={() =>
+                    l.amountCents > 0
+                      ? confirmDeleteRefund(l.id, l.amountCents)
+                      : router.push({ pathname: "/entry-form", params: { id: l.id } })
+                  }
                   android_ripple={ripple}
                   style={{
                     flexDirection: "row",
@@ -159,7 +188,7 @@ export default function CardScreen() {
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text>{l.description}</Text>
+                    <Text>{l.amountCents > 0 ? `${l.description} (estorno)` : l.description}</Text>
                     <Text style={{ color: colors.muted }}>
                       {short(l.occurredOn)}
                       {l.installmentTotal ? ` · parcela ${l.installmentNumber}/${l.installmentTotal}` : ""}

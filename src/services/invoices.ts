@@ -138,6 +138,38 @@ export function createCardPurchase(input: CardPurchaseInput): { ids: string[]; g
   return { ids, groupId };
 }
 
+/**
+ * Refund (credit, stored as an `adjustment` so it is neither income nor expense) or fee/interest (an expense)
+ * on the invoice of `referenceMonth`. Both carry the invoiceId, so the invoice total moves.
+ */
+export function addInvoiceAdjustment(input: {
+  cardAccountId: string;
+  referenceMonth: string;
+  type: "refund" | "fee";
+  amountCents: number;
+  description: string;
+  occurredAt: string;
+  categoryId?: string;
+}): string {
+  const card = requireCard(input.cardAccountId);
+  requireCategory(input.categoryId, "expense");
+  const base = {
+    accountId: card.id,
+    amountCents: input.amountCents,
+    description: input.description,
+    occurredAt: input.occurredAt,
+    categoryId: input.categoryId,
+    invoiceId: ensureInvoice(card.id, input.referenceMonth),
+  };
+  const id = newId();
+  const row =
+    input.type === "fee"
+      ? buildEntry({ ...base, kind: "expense" })
+      : { ...buildEntry({ ...base, kind: "income" }), kind: "adjustment" as const };
+  db.insert(transactions).values({ ...row, id }).run();
+  return id;
+}
+
 export type InvoiceListItem = {
   id: string;
   referenceMonth: string;

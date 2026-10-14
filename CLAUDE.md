@@ -68,7 +68,8 @@ Campos: id, cardAccountId, referenceMonth (`YYYY-MM`), closingDate, dueDate. **O
 - Pagar fatura = transferência da conta pagadora para o cartão; a perna do cartão leva `paidInvoiceId` (não `invoiceId`, para o pagamento não zerar o total). Valor pago = soma dos `paidInvoiceId`. Pagamento parcial é permitido.
 - `referenceMonth` é o **mês em que a fatura fecha**. Vencimento = primeira data com `dueDay` estritamente depois do fechamento (mesmo mês se `dueDay` > fechamento, senão o mês seguinte; dia 31 vira o último dia do mês). Faturas são criadas sob demanda (`ensureInvoice`); a aberta hoje e a seguinte sempre existem.
 - **Regra de fechamento:** compra no dia do fechamento vai para a fatura seguinte. **Confirmado no Inter** (pelo usuário). **Nubank ainda não confirmado**; por isso a tela de compra permite ajustar a fatura à mão (‹ ›) até validar com a primeira fatura real.
-- Parcelado: `planInstallments` gera uma parcela por fatura consecutiva (a diferença de centavos vai na primeira); cada parcela tem a data da compra deslocada mês a mês (dia limitado ao fim do mês). Editar compra parcelada não é permitido ainda (exclua a parcela e relance); excluir apaga só a parcela escolhida. Compra à vista no cartão pode ter valor, descrição e categoria editados, mas não conta nem data (a data define a fatura).
+- Parcelado: `planInstallments` gera uma parcela por fatura consecutiva (a diferença de centavos vai na primeira); cada parcela tem a data da compra deslocada mês a mês (dia limitado ao fim do mês). Parcela: dá para editar valor (de cada parcela), descrição, categoria e necessidade, e excluir, sempre com a escolha **só esta parcela** ou **esta e as seguintes** (a data, e portanto a fatura, não muda). Compra à vista no cartão pode ter valor, descrição e categoria editados, mas não conta nem data (a data define a fatura).
+- **Estorno** na fatura é um lançamento `adjustment` positivo com `invoiceId` na conta do cartão (reduz o total; não é receita nem despesa, e o CHECK impede `expense` positivo). **Juros e encargos** são `expense` com `invoiceId`. Ambos são lançados pela tela do cartão (`addInvoiceAdjustment`). Relatórios de gasto por categoria (Fase 4) devem abater estornos com categoria.
 
 ### Categorias (`categories`)
 id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?. Seed com categorias padrão brasileiras (Moradia, Energia, Internet, Educação, Mercado, Transporte, Saúde, Lazer, Assinaturas, Salário, Bônus, Rendimentos...).
@@ -109,7 +110,7 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 - **Dinheiro sempre em centavos inteiros.** Nunca float. Formate com `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })`.
 - Datas salvas em ISO; o cálculo de fatura e de mês usa o fuso `America/Sao_Paulo`.
 - Excluir é soft delete (`deletedAt`), toda consulta filtra por ele, e apagar uma perna de transferência apaga as duas. Índices únicos (ex.: `pluggyTransactionId`) valem só para linhas não apagadas.
-- Editar lançamento parcelado pergunta se aplica só nesta parcela ou nas seguintes (ainda bloqueado até a Fase 2).
+- Editar ou excluir lançamento parcelado pergunta se aplica só nesta parcela ou nas seguintes.
 - Credenciais nunca em logs, no repositório ou no código.
 - Backup: exportar e importar o banco (arquivo `.db`) pela tela de Backup, já implementado com `expo-file-system`. Importar guarda antes uma cópia (`financeiro-before-import.db`) e recarrega o app. Os dados só existem no aparelho: desinstalar o app ou limpar os dados apaga tudo.
 - Uso pessoal: não adicione multiusuário, login ou backend sem pedir.

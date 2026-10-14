@@ -12,10 +12,13 @@ import { createCardPurchase, previewCardPurchase } from "@/services/invoices";
 import {
   createEntry,
   createTransfer,
+  deleteInstallments,
   deleteTransaction,
   getTransactionForEdit,
   updateEntry,
+  updateInstallments,
   updateTransfer,
+  type InstallmentScope,
 } from "@/services/transactions";
 import { Button, Chips, Field, FormFooter, MoneyField, Text } from "@/ui/form";
 import { colors, ripple, spacing, TAP } from "@/ui/theme";
@@ -65,7 +68,9 @@ export default function EntryForm() {
   const selected = allAccounts.find((a) => a.id === accountId);
   const isCardPurchase = !existing && kind === "expense" && selected?.type === "credit_card";
   const isTransfer = kind === "transfer";
-  const lockedInstallment = !!existing?.installmentTotal;
+  const isInstallment = !!existing?.installmentTotal;
+  const hasLater = isInstallment && (existing?.installmentNumber ?? 0) < (existing?.installmentTotal ?? 0);
+  const [scope, setScope] = useState<InstallmentScope>("this");
   const cardEdit = !!existing?.invoiceId;
 
   const categories = useMemo(() => (isTransfer ? [] : listCategories(kind)), [kind, isTransfer]);
@@ -109,6 +114,13 @@ export default function EntryForm() {
       if (existing) {
         if (existing.kind === "transfer") {
           updateTransfer(existing.id, { amountCents: cents, description, occurredAt });
+        } else if (isInstallment) {
+          updateInstallments(existing.id, scope, {
+            amountCents: cents,
+            description,
+            categoryId: categoryId ?? null,
+            necessity: necessity ?? null,
+          });
         } else {
           if (!accountId) throw new UserError("Escolha a conta.");
           updateEntry(existing.id, {
@@ -159,28 +171,36 @@ export default function EntryForm() {
 
   const remove = () => {
     if (!existing) return;
+    const run = (what: () => void) => () => {
+      try {
+        what();
+        toast("Lançamento excluído");
+        router.back();
+      } catch (e) {
+        Alert.alert("Não foi possível excluir", errorMessage(e));
+      }
+    };
+    if (isInstallment) {
+      const n = `${existing.installmentNumber}/${existing.installmentTotal}`;
+      Alert.alert(
+        "Excluir parcela?",
+        hasLater ? `Parcela ${n} de "${existing.description}".` : `Parcela ${n} (a última) de "${existing.description}".`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Só esta", style: "destructive", onPress: run(() => deleteInstallments(existing.id, "this")) },
+          ...(hasLater
+            ? [{ text: "Esta e as seguintes", style: "destructive" as const, onPress: run(() => deleteInstallments(existing.id, "following")) }]
+            : []),
+        ],
+      );
+      return;
+    }
     Alert.alert(
       "Excluir lançamento?",
-      existing.kind === "transfer"
-        ? "As duas pontas da transferência serão excluídas."
-        : lockedInstallment
-          ? `Só esta parcela (${existing.installmentNumber}/${existing.installmentTotal}) será excluída. As outras ficam.`
-          : `"${existing.description}"`,
+      existing.kind === "transfer" ? "As duas pontas da transferência serão excluídas." : `"${existing.description}"`,
       [
         { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          style: "destructive",
-          onPress: () => {
-            try {
-              deleteTransaction(existing.id);
-              toast("Lançamento excluído");
-              router.back();
-            } catch (e) {
-              Alert.alert("Não foi possível excluir", errorMessage(e));
-            }
-          },
-        },
+        { text: "Excluir", style: "destructive", onPress: run(() => deleteTransaction(existing.id)) },
       ],
     );
   };
@@ -206,34 +226,39 @@ export default function EntryForm() {
         keyboardShouldPersistTaps="handled"
       >
         {allAccounts.length === 0 && <Text>Crie uma conta antes de lançar.</Text>}
-        {lockedInstallment && (
+        {isInstallment && (
           <Text style={{ color: colors.muted }}>
-            Parcela {existing?.installmentNumber}/{existing?.installmentTotal} de uma compra parcelada: não dá para
-            editar. Para corrigir, exclua a parcela e lance de novo.
+            Parcela {existing?.installmentNumber}/{existing?.installmentTotal} de uma compra parcelada. O valor é o de
+            cada parcela.
           </Text>
         )}
         <Chips label="Tipo" options={KINDS} value={kind} onChange={changeKind} disabled={!!existing} />
         <MoneyField
-          label={isCardPurchase ? "Valor total da compra" : "Valor"}
+          label={isCardPurchase ? "Valor total da compra" : isInstallment ? "Valor da parcela" : "Valor"}
           cents={cents}
           onChangeCents={setCents}
           autoFocus={!existing}
-          editable={!lockedInstallment}
         />
-        <Field
-          label="Descrição"
-          value={description}
-          onChangeText={setDescription}
-          editable={!lockedInstallment}
-        />
+        <Field label="Descrição" value={description} onChangeText={setDescription} />
         <Field
           label="Data"
           value={date}
           onChangeText={(t) => setDate(maskDate(t))}
           keyboardType="numeric"
           placeholder="dd/mm/aaaa"
-          editable={!lockedInstallment && !cardEdit}
+          editable={!cardEdit}
         />
+        {hasLater && (
+          <Chips
+            label="Aplicar a"
+            options={[
+              { value: "this", label: "Só esta parcela" },
+              { value: "following", label: "Esta e as seguintes" },
+            ]}
+            value={scope}
+            onChange={setScope}
+          />
+        )}
 
         {existing && isTransfer ? (
           <Text style={{ color: colors.muted }}>
@@ -328,11 +353,9 @@ export default function EntryForm() {
         )}
         {existing && <Button title="Excluir lançamento" onPress={remove} danger />}
       </ScrollView>
-      {!lockedInstallment && (
-        <FormFooter bottomInset={lift > 0 ? 0 : insets.bottom}>
-          <Button title="Salvar" onPress={save} />
-        </FormFooter>
-      )}
+      <FormFooter bottomInset={lift > 0 ? 0 : insets.bottom}>
+        <Button title="Salvar" onPress={save} />
+      </FormFooter>
     </View>
   );
 }
