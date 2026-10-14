@@ -80,6 +80,12 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 - As ocorrências do mês corrente e do próximo são geradas de forma **idempotente** (unique em recurrenceId + month) ao abrir o app.
 - Marcar como paga cria o lançamento real (com o valor real, que pode diferir do esperado) e vincula `transactionId`. Um lançamento capturado automaticamente também pode ser vinculado a uma ocorrência.
 - Recorrência paga no cartão (ex.: assinatura) gera o lançamento na fatura certa.
+- **Geração:** do `startMonth` até o mês seguinte (ou `endMonth`, se antes), de forma idempotente, ao abrir o app e ao criar/editar uma conta fixa. Quem fica meses sem abrir o app recupera os meses perdidos. `dayOfMonth` 31 em mês curto vira o último dia.
+- **Projeção:** meses além dessa janela mostram as contas fixas ativas em vigor como "previstas", calculadas na hora (sem gravar). Abrir uma delas cria a ocorrência (`ensureOccurrence`), para poder pagar adiantado. Assim uma conta sem fim aparece em qualquer mês futuro.
+- **"Atrasada" é derivado** (ocorrência `planned` com `dueDate` no passado), nunca gravado. Ocorrência paga mostra o valor real do lançamento ligado; pulada não conta em nenhum total.
+- Editar a conta fixa reaplica valor e dia às ocorrências **ainda não pagas deste mês em diante**; desativar remove essas ocorrências (o que já foi pago fica). O tipo (receita/despesa) não muda depois de criada.
+- Excluir o lançamento de uma ocorrência paga (pela lista ou por "Desfazer pagamento") devolve a ocorrência a `planned`.
+- Receita não cai em cartão de crédito. O vínculo de um lançamento capturado automaticamente a uma ocorrência é da Fase 7.
 
 ### Investimentos
 - MVP: contas `investment` com **snapshots de saldo** (`investment_snapshots`: accountId, date, balanceCents) mais aportes e resgates como transferências.
@@ -113,6 +119,7 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 - **Entrada de dinheiro é em centavos**: só dígitos, "10" vira 0,10 e "1023" vira 10,23 (`MoneyField`, `centsFromTyped`). Não existe parser de texto livre.
 - **Tema escuro apenas** (`userInterfaceStyle: dark`). Cores em `src/ui/theme.ts`; use o `Text` de `src/ui/form.tsx`, não o do React Native (o padrão dele é preto).
 - **Fora de escopo de UX:** acessibilidade para leitor de tela (uso pessoal), haptics e tema claro. O plano de melhorias de UI está em `docs/ux-review.md`.
+- Pendências e backlog conhecidos ficam em `docs/backlog.md`; ao deixar algo para depois, registre lá.
 - IDs são UUID v4 gerado em JS (`src/db/id.ts`), sem módulo nativo.
 - `src/db/schema.ts` é carregado pelo `drizzle-kit` em Node puro: **não importe módulo nativo ou do React Native nele**. Gere migrations com `npx drizzle-kit generate`.
 - Telas leem o banco de forma síncrona; consultas que dependem de migration só rodam depois que o layout raiz confirma as migrations (nunca no nível do módulo).

@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { db } from "@/db/client";
 import migrations from "@/db/migrations/migrations";
 import { seedCategories } from "@/db/seeds";
+import { generateOccurrences } from "@/services/recurrences";
 import { Text } from "@/ui/form";
 import { colors, spacing } from "@/ui/theme";
 
@@ -19,6 +20,7 @@ export default function RootLayout() {
   }
   if (!success) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   seedCategories();
+  generateOccurrences();
   return (
     <Stack
       screenOptions={{

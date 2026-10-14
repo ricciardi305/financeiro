@@ -15,6 +15,7 @@ export function Field(props: {
   editable?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
+  selectTextOnFocus?: boolean;
 }) {
   return (
     <View style={{ gap: spacing.xs }}>
@@ -27,6 +28,7 @@ export function Field(props: {
         placeholder={props.placeholder}
         placeholderTextColor={colors.placeholder}
         autoFocus={props.autoFocus}
+        selectTextOnFocus={props.selectTextOnFocus}
         style={{
           minHeight: TAP,
           borderWidth: 1,
@@ -59,6 +61,7 @@ export function MoneyField(props: {
       keyboardType={props.allowNegative ? "numbers-and-punctuation" : "numeric"}
       editable={props.editable}
       autoFocus={props.autoFocus}
+      selectTextOnFocus // typing replaces the shown value instead of appending to it
     />
   );
 }

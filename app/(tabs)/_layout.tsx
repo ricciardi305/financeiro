@@ -38,6 +38,15 @@ export default function TabsLayout() {
           headerRight: () => <HeaderAction symbol="+" onPress={() => router.push("/entry-form")} />,
         }}
       />
+      <Tabs.Screen
+        name="month"
+        options={{
+          title: "Contas do mês",
+          tabBarLabel: "Mês",
+          tabBarIcon: icon("calendar-outline"),
+          headerRight: () => <HeaderAction symbol="+" onPress={() => router.push("/recurrence-form")} />,
+        }}
+      />
       <Tabs.Screen name="settings" options={{ title: "Backup", tabBarIcon: icon("save-outline") }} />
     </Tabs>
   );

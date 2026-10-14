@@ -22,6 +22,22 @@ export function parseBrDate(text: string): string | null {
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
+/** Digits only, shaped as mm/aaaa while typing. */
+export function maskMonth(text: string): string {
+  const d = text.replace(/\D/g, "").slice(0, 6);
+  return d.length <= 2 ? d : `${d.slice(0, 2)}/${d.slice(2)}`;
+}
+
+/** "mm/aaaa" -> "YYYY-MM", or null when it is not a real month (from 2000 on). */
+export function parseBrMonth(text: string): string | null {
+  const m = text.match(/^(\d{2})\/(\d{4})$/);
+  if (!m || Number(m[2]) < 2000 || Number(m[1]) < 1 || Number(m[1]) > 12) return null;
+  return `${m[2]}-${m[1]}`;
+}
+
+/** "YYYY-MM" -> "mm/aaaa". */
+export const monthToBr = (ym: string): string => `${ym.slice(5, 7)}/${ym.slice(0, 4)}`;
+
 /** "YYYY-MM-DD" -> "dd/mm/aaaa". */
 export const isoDateToBr = (iso: string): string => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 

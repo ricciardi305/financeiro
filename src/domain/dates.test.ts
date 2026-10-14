@@ -54,3 +54,17 @@ test("month navigation crosses years and builds half-open ranges", () => {
   expect(monthRange("2026-12")).toEqual({ from: "2026-12-01", to: "2027-01-01" });
   expect(monthLabel("2026-03")).toBe("março de 2026");
 });
+
+import { maskMonth, monthToBr, parseBrMonth } from "./dates";
+
+test("month input mask, parsing and display", () => {
+  expect(maskMonth("1")).toBe("1");
+  expect(maskMonth("102026")).toBe("10/2026");
+  expect(maskMonth("10/2026999")).toBe("10/2026");
+  expect(parseBrMonth("10/2026")).toBe("2026-10");
+  expect(parseBrMonth("13/2026")).toBeNull();
+  expect(parseBrMonth("00/2026")).toBeNull();
+  expect(parseBrMonth("10/1999")).toBeNull();
+  expect(parseBrMonth("10/26")).toBeNull();
+  expect(monthToBr("2026-10")).toBe("10/2026");
+});

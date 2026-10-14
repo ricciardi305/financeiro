@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, isNull, lt } from "drizzle-orm";
 import { db } from "@/db/client";
 import { newId } from "@/db/id";
-import { accounts, categories, transactions } from "@/db/schema";
+import { accounts, categories, occurrences, transactions } from "@/db/schema";
 import { accountBalance, type Balance } from "@/domain/balance";
 import { monthRange } from "@/domain/dates";
 import { UserError } from "@/domain/errors";
@@ -61,6 +61,11 @@ export function deleteTransaction(id: string): void {
   db.update(transactions)
     .set({ deletedAt: new Date().toISOString() })
     .where(and(scope, isNull(transactions.deletedAt)))
+    .run();
+  // A recurring bill whose payment was deleted goes back to being unpaid.
+  db.update(occurrences)
+    .set({ status: "planned", transactionId: null })
+    .where(eq(occurrences.transactionId, t.id))
     .run();
 }
 

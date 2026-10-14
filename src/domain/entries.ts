@@ -43,6 +43,7 @@ export type EntryInput = {
   merchantRaw?: string;
   notes?: string;
   invoiceId?: string;
+  occurrenceId?: string;
 };
 
 export function buildEntry(i: EntryInput): NewTransaction {
@@ -61,6 +62,7 @@ export function buildEntry(i: EntryInput): NewTransaction {
     merchantRaw: i.merchantRaw,
     notes: i.notes,
     invoiceId: i.invoiceId,
+    occurrenceId: i.occurrenceId,
   };
 }
 

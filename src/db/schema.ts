@@ -53,6 +53,37 @@ export const invoices = sqliteTable(
   (t) => [uniqueIndex("invoices_card_month_uq").on(t.cardAccountId, t.referenceMonth)],
 );
 
+export const recurrences = sqliteTable("recurrences", {
+  id: id(),
+  description: text("description").notNull(),
+  kind: text("kind", { enum: ["income", "expense"] }).notNull(),
+  accountId: text("account_id").notNull().references(() => accounts.id),
+  categoryId: text("category_id").references(() => categories.id),
+  necessity: text("necessity", { enum: ["essential", "optional"] }),
+  amountCents: integer("amount_cents").notNull(), // expected, positive magnitude
+  isVariableAmount: integer("is_variable_amount", { mode: "boolean" }).notNull().default(false),
+  dayOfMonth: integer("day_of_month").notNull(),
+  startMonth: text("start_month").notNull(), // YYYY-MM
+  endMonth: text("end_month"), // YYYY-MM, inclusive
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: createdAt(),
+});
+
+// One row per recurrence per month; status "late" is derived from dueDate, never stored.
+export const occurrences = sqliteTable(
+  "occurrences",
+  {
+    id: id(),
+    recurrenceId: text("recurrence_id").notNull().references(() => recurrences.id),
+    month: text("month").notNull(), // YYYY-MM
+    dueDate: text("due_date").notNull(), // YYYY-MM-DD
+    expectedAmountCents: integer("expected_amount_cents").notNull(),
+    status: text("status", { enum: ["planned", "paid", "skipped"] }).notNull().default("planned"),
+    transactionId: text("transaction_id").references(() => transactions.id),
+  },
+  (t) => [uniqueIndex("occurrences_recurrence_month_uq").on(t.recurrenceId, t.month)],
+);
+
 export const transactions = sqliteTable(
   "transactions",
   {

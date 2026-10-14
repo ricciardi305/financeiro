@@ -66,6 +66,9 @@ export type CardPurchaseInput = {
   monthOffset?: number;
   categoryId?: string;
   necessity?: "essential" | "optional";
+  /** Set when the purchase is the payment of a recurring bill. */
+  source?: "manual" | "recurrence";
+  occurrenceId?: string;
 };
 
 /** Which invoices a purchase would hit, for previews. */
@@ -89,8 +92,8 @@ export function previewCardPurchase(p: {
   }));
 }
 
-/** Creates one expense per installment, each on its own invoice. Returns the installment group id (or null). */
-export function createCardPurchase(input: CardPurchaseInput): string | null {
+/** Creates one expense per installment, each on its own invoice. Returns the created ids and the group id (null if single). */
+export function createCardPurchase(input: CardPurchaseInput): { ids: string[]; groupId: string | null } {
   const card = requireCard(input.cardAccountId);
   requireCategory(input.categoryId, "expense");
   const count = input.installments ?? 1;
@@ -102,6 +105,7 @@ export function createCardPurchase(input: CardPurchaseInput): string | null {
     monthOffset: input.monthOffset,
   });
   const groupId = count > 1 ? newId() : null;
+  const ids: string[] = [];
 
   db.transaction(() => {
     for (const part of plan) {
@@ -115,11 +119,15 @@ export function createCardPurchase(input: CardPurchaseInput): string | null {
         categoryId: input.categoryId,
         necessity: input.necessity,
         invoiceId: ensureInvoice(card.id, part.referenceMonth),
+        source: input.source,
+        occurrenceId: input.occurrenceId,
       });
+      const id = newId();
+      ids.push(id);
       db.insert(transactions)
         .values({
           ...row,
-          id: newId(),
+          id,
           installmentGroupId: groupId,
           installmentNumber: groupId ? part.number : null,
           installmentTotal: groupId ? count : null,
@@ -127,7 +135,7 @@ export function createCardPurchase(input: CardPurchaseInput): string | null {
         .run();
     }
   });
-  return groupId;
+  return { ids, groupId };
 }
 
 export type InvoiceListItem = {
