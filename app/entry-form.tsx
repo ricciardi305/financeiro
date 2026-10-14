@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, ScrollView } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isoDateToBr, maskDate, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
@@ -15,8 +15,10 @@ import {
   updateEntry,
   updateTransfer,
 } from "@/services/transactions";
-import { Button, Chips, Field, MoneyField, Text } from "@/ui/form";
-import { colors } from "@/ui/theme";
+import { Button, Chips, Field, FormFooter, MoneyField, Text } from "@/ui/form";
+import { colors, spacing } from "@/ui/theme";
+import { useKeyboardLift } from "@/ui/useKeyboardLift";
+import { toast } from "@/ui/toast";
 
 type Kind = "expense" | "income" | "transfer";
 type Necessity = "essential" | "optional";
@@ -35,6 +37,7 @@ const NECESSITIES: { value: Necessity; label: string }[] = [
 export default function EntryForm() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { ref: screenRef, lift } = useKeyboardLift();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const existing = useMemo(() => (id ? getTransactionForEdit(id) : undefined), [id]);
 
@@ -105,6 +108,7 @@ export default function EntryForm() {
           necessity: kind === "expense" ? necessity : undefined,
         });
       }
+      toast(existing ? "Lançamento atualizado" : "Lançamento salvo");
       router.back();
     } catch (e) {
       Alert.alert("Não foi possível salvar", errorMessage(e));
@@ -124,6 +128,7 @@ export default function EntryForm() {
           onPress: () => {
             try {
               deleteTransaction(existing.id);
+              toast("Lançamento excluído");
               router.back();
             } catch (e) {
               Alert.alert("Não foi possível excluir", errorMessage(e));
@@ -137,15 +142,16 @@ export default function EntryForm() {
   const isTransfer = kind === "transfer";
 
   return (
-    <ScrollView
-      style={{ backgroundColor: colors.bg }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 16 + insets.bottom, gap: 16 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <View ref={screenRef} collapsable={false} style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: lift }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}
+        keyboardShouldPersistTaps="handled"
+      >
       <Stack.Screen options={{ title: existing ? "Editar lançamento" : "Novo lançamento" }} />
       {accounts.length === 0 && <Text>Crie uma conta (corrente, carteira ou investimento) antes de lançar.</Text>}
       <Chips label="Tipo" options={KINDS} value={kind} onChange={changeKind} disabled={!!existing} />
-      <MoneyField label="Valor" cents={cents} onChangeCents={setCents} />
+      <MoneyField label="Valor" cents={cents} onChangeCents={setCents} autoFocus={!existing} />
       <Field label="Descrição" value={description} onChangeText={setDescription} />
       <Field
         label="Data"
@@ -189,8 +195,11 @@ export default function EntryForm() {
           onClear={() => setNecessity(undefined)}
         />
       )}
-      <Button title="Salvar" onPress={save} />
       {existing && <Button title="Excluir lançamento" onPress={remove} danger />}
-    </ScrollView>
+      </ScrollView>
+      <FormFooter bottomInset={lift > 0 ? 0 : insets.bottom}>
+        <Button title="Salvar" onPress={save} />
+      </FormFooter>
+    </View>
   );
 }

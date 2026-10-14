@@ -110,6 +110,7 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 - **Mensagens ao usuário são em português** e vêm de `UserError` (`src/domain/errors.ts`). A UI mostra só a mensagem de `UserError`; qualquer outro erro vira "Algo deu errado" e vai para o log. Mensagens de validação ficam no domínio, não nas telas.
 - **Entrada de dinheiro é em centavos**: só dígitos, "10" vira 0,10 e "1023" vira 10,23 (`MoneyField`, `centsFromTyped`). Não existe parser de texto livre.
 - **Tema escuro apenas** (`userInterfaceStyle: dark`). Cores em `src/ui/theme.ts`; use o `Text` de `src/ui/form.tsx`, não o do React Native (o padrão dele é preto).
+- **Fora de escopo de UX:** acessibilidade para leitor de tela (uso pessoal), haptics e tema claro. O plano de melhorias de UI está em `docs/ux-review.md`.
 - IDs são UUID v4 gerado em JS (`src/db/id.ts`), sem módulo nativo.
 - `src/db/schema.ts` é carregado pelo `drizzle-kit` em Node puro: **não importe módulo nativo ou do React Native nele**. Gere migrations com `npx drizzle-kit generate`.
 - Telas leem o banco de forma síncrona; consultas que dependem de migration só rodam depois que o layout raiz confirma as migrations (nunca no nível do módulo).

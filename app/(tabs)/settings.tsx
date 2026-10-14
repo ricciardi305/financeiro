@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Alert, View } from "react-native";
-import { Stack } from "expo-router";
 import { errorMessage } from "@/domain/errors";
 import { exportBackup, importBackup } from "@/services/backup";
 import { Button, Text } from "@/ui/form";
-import { colors } from "@/ui/theme";
+import { colors, spacing } from "@/ui/theme";
+import { toast } from "@/ui/toast";
 
 export default function Settings() {
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export default function Settings() {
   const doExport = () =>
     run(async () => {
       const name = await exportBackup();
-      if (name) Alert.alert("Backup salvo", `Arquivo: ${name}`);
+      if (name) toast(`Backup salvo: ${name}`);
     }, "Não foi possível exportar");
 
   const doImport = () =>
@@ -33,13 +33,16 @@ export default function Settings() {
       "Todos os dados atuais serão substituídos pelos do arquivo. Uma cópia dos dados atuais é guardada antes (financeiro-before-import.db, na pasta do app).",
       [
         { text: "Cancelar", style: "cancel" },
-        { text: "Importar", style: "destructive", onPress: () => run(async () => void (await importBackup()), "Não foi possível importar") },
+        {
+          text: "Importar",
+          style: "destructive",
+          onPress: () => run(async () => void (await importBackup()), "Não foi possível importar"),
+        },
       ],
     );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, padding: 16, gap: 16 }}>
-      <Stack.Screen options={{ title: "Backup" }} />
+    <View style={{ flex: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.lg }}>
       <Text style={{ color: colors.muted }}>
         Os dados ficam só neste aparelho. Exporte um backup com frequência e guarde o arquivo fora do celular.
       </Text>

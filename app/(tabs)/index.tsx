@@ -1,0 +1,76 @@
+import { useCallback, useState } from "react";
+import { FlatList, Pressable, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { formatCents } from "@/domain/money";
+import { type AccountWithBalance, listAccounts } from "@/services/accounts";
+import { EmptyState, Text } from "@/ui/form";
+import { INSTITUTION_LABEL, TYPE_LABEL } from "@/ui/labels";
+import { colors, ripple, spacing } from "@/ui/theme";
+
+export default function Accounts() {
+  const router = useRouter();
+  const [items, setItems] = useState<AccountWithBalance[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setItems(listAccounts({ includeArchived: showArchived }));
+    }, [showArchived]),
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <FlatList
+        data={items}
+        keyExtractor={(a) => a.id}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+        ListEmptyComponent={
+          <EmptyState
+            message="Nenhuma conta ainda."
+            actionTitle="Criar conta"
+            onAction={() => router.push("/account-form")}
+          />
+        }
+        renderItem={({ item: a }) => (
+          <Pressable
+            onPress={() => router.push({ pathname: "/account-form", params: { id: a.id } })}
+            android_ripple={ripple}
+            style={{
+              padding: spacing.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              borderRadius: spacing.sm,
+              overflow: "hidden",
+              opacity: a.archived ? 0.5 : 1,
+            }}
+          >
+            <Text style={{ fontWeight: "600" }}>
+              {a.name}
+              {a.archived ? " (arquivada)" : ""}
+            </Text>
+            <Text style={{ color: colors.muted }}>
+              {TYPE_LABEL[a.type]} · {INSTITUTION_LABEL[a.institution]}
+            </Text>
+            <Text style={{ fontSize: 18, color: a.balance.confirmedCents < 0 ? colors.expense : colors.text }}>
+              {formatCents(a.balance.confirmedCents)}
+            </Text>
+            {a.balance.pendingCents !== 0 && (
+              <Text style={{ color: colors.muted }}>pendente {formatCents(a.balance.pendingCents)}</Text>
+            )}
+          </Pressable>
+        )}
+        ListFooterComponent={
+          <Pressable
+            onPress={() => setShowArchived((v) => !v)}
+            style={{ minHeight: 48, justifyContent: "center", marginTop: spacing.sm }}
+          >
+            <Text style={{ textAlign: "center", color: colors.primary }}>
+              {showArchived ? "Ocultar arquivadas" : "Mostrar arquivadas"}
+            </Text>
+          </Pressable>
+        }
+      />
+    </View>
+  );
+}
