@@ -5,12 +5,13 @@ import { accounts, transactions } from "@/db/schema";
 import { type AccountInput, validateAccount } from "@/domain/accounts";
 import { accountBalance, type Balance } from "@/domain/balance";
 import { UserError } from "@/domain/errors";
+import { investmentValueOf } from "./investments";
 
 export type Account = typeof accounts.$inferSelect;
 
 /** Fields that can change after creation. `type` and `initialBalanceCents` are fixed. */
 export type AccountPatch = Partial<
-  Pick<AccountInput, "name" | "institution" | "pluggyAccountId" | "closingDay" | "dueDay" | "limitCents" | "paymentAccountId">
+  Pick<AccountInput, "name" | "institution" | "institutionName" | "pluggyAccountId" | "closingDay" | "dueDay" | "limitCents" | "paymentAccountId">
 >;
 
 function requirePaymentAccount(id: string | undefined): void {
@@ -40,6 +41,7 @@ export function updateAccount(id: string, patch: AccountPatch): void {
   const merged = validateAccount({
     name: cur.name,
     institution: cur.institution,
+    institutionName: cur.institutionName ?? undefined,
     type: cur.type,
     initialBalanceCents: cur.initialBalanceCents,
     pluggyAccountId: cur.pluggyAccountId ?? undefined,
@@ -54,6 +56,7 @@ export function updateAccount(id: string, patch: AccountPatch): void {
     .set({
       name: merged.name,
       institution: merged.institution,
+      institutionName: merged.institutionName ?? null,
       pluggyAccountId: merged.pluggyAccountId ?? null,
       closingDay: merged.closingDay ?? null,
       dueDay: merged.dueDay ?? null,
@@ -92,11 +95,14 @@ export function listAccounts(opts: { includeArchived?: boolean } = {}): AccountW
     .all();
   return list
     .filter((a) => opts.includeArchived || !a.archived)
-    .map((a) => ({
-      ...a,
-      balance: accountBalance(
+    .map((a) => {
+      const ledger = accountBalance(
         a.initialBalanceCents,
         sums.filter((s) => s.accountId === a.id).map((s) => ({ amountCents: Number(s.total), status: s.status })),
-      ),
-    }));
+      );
+      // An investment is worth what its latest snapshot says (plus later flows), not just the ledger.
+      if (a.type !== "investment") return { ...a, balance: ledger };
+      const confirmedCents = investmentValueOf(a.id);
+      return { ...a, balance: { ...ledger, confirmedCents, projectedCents: confirmedCents + ledger.pendingCents } };
+    });
 }

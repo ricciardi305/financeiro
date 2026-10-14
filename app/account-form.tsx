@@ -24,6 +24,7 @@ export default function AccountForm() {
 
   const [name, setName] = useState(existing?.name ?? "");
   const [institution, setInstitution] = useState<Institution>(existing?.institution ?? "nubank");
+  const [institutionName, setInstitutionName] = useState(existing?.institutionName ?? "");
   const [type, setType] = useState<AccountType>(existing?.type ?? "checking");
   const [balance, setBalance] = useState(existing?.initialBalanceCents ?? 0);
   const [closingDay, setClosingDay] = useState(existing?.closingDay?.toString() ?? "");
@@ -40,8 +41,8 @@ export default function AccountForm() {
       const card = isCard
         ? { closingDay: Number(closingDay), dueDay: Number(dueDay), limitCents, paymentAccountId: payerId }
         : {};
-      if (existing) updateAccount(existing.id, { name, institution, ...card });
-      else createAccount({ name, institution, type, initialBalanceCents, ...card });
+      if (existing) updateAccount(existing.id, { name, institution, institutionName, ...card });
+      else createAccount({ name, institution, institutionName, type, initialBalanceCents, ...card });
       toast(existing ? "Conta atualizada" : "Conta salva");
       router.back();
     } catch (e) {
@@ -70,6 +71,9 @@ export default function AccountForm() {
       >
         <Field label="Nome" value={name} onChangeText={setName} autoFocus={!existing} />
         <Chips label="Instituição" options={opts(INSTITUTION_LABEL)} value={institution} onChange={setInstitution} />
+        {institution === "other" && (
+          <Field label="Nome da instituição" value={institutionName} onChangeText={setInstitutionName} />
+        )}
         <Chips label="Tipo" options={opts(TYPE_LABEL)} value={type} onChange={setType} disabled={!!existing} />
         <MoneyField
           label="Saldo inicial (fixo após criar)"

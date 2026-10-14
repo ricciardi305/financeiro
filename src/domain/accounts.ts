@@ -7,6 +7,8 @@ export type Institution = (typeof accounts.$inferSelect)["institution"];
 export type AccountInput = {
   name: string;
   institution: Institution;
+  /** Required when institution is "other"; ignored otherwise. */
+  institutionName?: string;
   type: AccountType;
   /** Set once at creation; never edited afterwards (corrections are `adjustment` entries). */
   initialBalanceCents: number;
@@ -41,5 +43,10 @@ export function validateAccount(i: AccountInput): AccountInput {
   ) {
     throw new Error("card fields only apply to credit_card accounts");
   }
-  return { ...i, name };
+  let institutionName: string | undefined;
+  if (i.institution === "other") {
+    institutionName = i.institutionName?.trim();
+    if (!institutionName) throw new UserError("Informe o nome da instituição.");
+  }
+  return { ...i, name, institutionName };
 }

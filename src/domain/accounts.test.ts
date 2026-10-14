@@ -38,3 +38,9 @@ test("non-card accounts cannot carry card fields", () => {
 test("blank name gives a friendly Portuguese message", () => {
   expect(() => validateAccount({ ...card, name: "" })).toThrow("Informe o nome da conta.");
 });
+
+test("institution \"other\" needs a typed name; other institutions drop it", () => {
+  expect(() => validateAccount({ ...checking, institution: "other" })).toThrow("nome da instituição");
+  expect(validateAccount({ ...checking, institution: "other", institutionName: " C6 " }).institutionName).toBe("C6");
+  expect(validateAccount({ ...checking, institution: "mercadopago", institutionName: "x" }).institutionName).toBeUndefined();
+});

@@ -90,7 +90,8 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 
 ### Investimentos
 - MVP: contas `investment` com **snapshots de saldo** (`investment_snapshots`: accountId, date, balanceCents) mais aportes e resgates como transferências.
-- Rendimento do período = saldo atual − saldo anterior − aportes + resgates.
+- **Valor atual** de um investimento = último snapshot + aportes/resgates (lançamentos da conta) depois da data dele; sem snapshot, saldo inicial + lançamentos. Vale na lista de contas e no patrimônio (`src/domain/investments.ts`).
+- **Rendimento do período** (entre dois snapshots) = saldo final − saldo anterior − (aportes − resgates do período); lançamentos no dia de um snapshot já estão dentro dele. O primeiro snapshot não tem período. Um snapshot por conta e dia (digitar de novo substitui). Telas: `investment/[id]` (valor, aplicar, resgatar, atualizar saldo) e `investment-snapshot`.
 - Depois: posições por ativo via Pluggy (`/investments`).
 
 ### Saldos e visão do mês

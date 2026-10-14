@@ -17,7 +17,8 @@ const createdAt = () =>
 export const accounts = sqliteTable("accounts", {
   id: id(),
   name: text("name").notNull(),
-  institution: text("institution", { enum: ["nubank", "inter", "other"] }).notNull(),
+  institution: text("institution", { enum: ["nubank", "inter", "mercadopago", "other"] }).notNull(),
+  institutionName: text("institution_name"), // typed name when institution is "other"
   type: text("type", { enum: ["checking", "credit_card", "investment", "cash"] }).notNull(),
   initialBalanceCents: integer("initial_balance_cents").notNull().default(0),
   archived: integer("archived", { mode: "boolean" }).notNull().default(false),
@@ -128,4 +129,17 @@ export const transactions = sqliteTable(
       .on(t.pluggyTransactionId)
       .where(sql`${t.pluggyTransactionId} IS NOT NULL AND ${t.deletedAt} IS NULL`),
   ],
+);
+
+/** Market value of an investment account on a day, typed by the user. One per account and date. */
+export const investmentSnapshots = sqliteTable(
+  "investment_snapshots",
+  {
+    id: id(),
+    accountId: text("account_id").notNull().references(() => accounts.id),
+    date: text("date").notNull(), // YYYY-MM-DD
+    balanceCents: integer("balance_cents").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("investment_snapshots_account_date_uq").on(t.accountId, t.date)],
 );

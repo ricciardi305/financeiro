@@ -1,0 +1,1 @@
+ALTER TABLE `accounts` ADD `institution_name` text;

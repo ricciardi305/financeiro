@@ -6,7 +6,7 @@ import { getNetWorth } from "@/services/overview";
 import type { NetWorth } from "@/domain/overview";
 import { type AccountWithBalance, listAccounts } from "@/services/accounts";
 import { EmptyState, Text } from "@/ui/form";
-import { INSTITUTION_LABEL, TYPE_LABEL } from "@/ui/labels";
+import { institutionLabel, TYPE_LABEL } from "@/ui/labels";
 import { colors, ripple, spacing } from "@/ui/theme";
 
 export default function Accounts() {
@@ -63,7 +63,9 @@ export default function Accounts() {
             onPress={() =>
               a.type === "credit_card"
                 ? router.push({ pathname: "/card/[id]", params: { id: a.id } })
-                : router.push({ pathname: "/account-form", params: { id: a.id } })
+                : a.type === "investment"
+                  ? router.push({ pathname: "/investment/[id]", params: { id: a.id } })
+                  : router.push({ pathname: "/account-form", params: { id: a.id } })
             }
             android_ripple={ripple}
             style={{
@@ -81,7 +83,7 @@ export default function Accounts() {
               {a.archived ? " (arquivada)" : ""}
             </Text>
             <Text style={{ color: colors.muted }}>
-              {TYPE_LABEL[a.type]} · {INSTITUTION_LABEL[a.institution]}
+              {TYPE_LABEL[a.type]} · {institutionLabel(a)}
             </Text>
             <Text style={{ fontSize: 18, color: a.balance.confirmedCents < 0 ? colors.expense : colors.text }}>
               {formatCents(a.balance.confirmedCents)}

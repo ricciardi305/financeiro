@@ -43,20 +43,25 @@ export default function EntryForm() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { ref: screenRef, lift } = useKeyboardLift();
-  const { id, accountId: presetAccountId } = useLocalSearchParams<{ id?: string; accountId?: string }>();
+  const {
+    id,
+    accountId: presetAccountId,
+    toAccountId: presetToAccountId,
+    kind: presetKind,
+  } = useLocalSearchParams<{ id?: string; accountId?: string; toAccountId?: string; kind?: Kind }>();
   const existing = useMemo(() => (id ? getTransactionForEdit(id) : undefined), [id]);
 
   const allAccounts = useMemo(() => listAccounts(), []);
   const accountName = (accId?: string) => allAccounts.find((a) => a.id === accId)?.name;
 
-  const [kind, setKind] = useState<Kind>(existing?.kind ?? "expense");
+  const [kind, setKind] = useState<Kind>(existing?.kind ?? presetKind ?? "expense");
   const [cents, setCents] = useState(existing?.amountCents ?? 0);
   const [description, setDescription] = useState(existing?.description ?? "");
   const [date, setDate] = useState(isoDateToBr(existing?.occurredOn ?? saoPauloDate(new Date().toISOString())));
   const [accountId, setAccountId] = useState<string | undefined>(
     existing?.accountId ?? presetAccountId ?? (allAccounts.length === 1 ? allAccounts[0].id : undefined),
   );
-  const [toAccountId, setToAccountId] = useState<string | undefined>(existing?.toAccountId);
+  const [toAccountId, setToAccountId] = useState<string | undefined>(existing?.toAccountId ?? presetToAccountId);
   const [categoryId, setCategoryId] = useState<string | undefined>(existing?.categoryId ?? undefined);
   const [necessity, setNecessity] = useState<Necessity | undefined>(existing?.necessity ?? undefined);
   const [installments, setInstallments] = useState("1");
