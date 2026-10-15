@@ -89,10 +89,10 @@ export default function AccountForm() {
               label="Finais dos cartões (4 números cada; separe com espaço)"
               value={cardFinals}
               onChangeText={(t) => setCardFinals(t.replace(/[^\d ]/g, ""))}
-              keyboardType="numeric"
+              keyboardType="number-pad"
             />
-            <Field label="Dia de fechamento" value={closingDay} onChangeText={setClosingDay} keyboardType="numeric" />
-            <Field label="Dia de vencimento" value={dueDay} onChangeText={setDueDay} keyboardType="numeric" />
+            <Field label="Dia de fechamento" value={closingDay} onChangeText={setClosingDay} keyboardType="number-pad" />
+            <Field label="Dia de vencimento" value={dueDay} onChangeText={setDueDay} keyboardType="number-pad" />
             <MoneyField label="Limite (opcional)" cents={limit} onChangeCents={setLimit} />
             <Chips
               label="Conta que paga a fatura"

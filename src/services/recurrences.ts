@@ -306,3 +306,13 @@ export function reopenOccurrence(id: string): void {
     .where(and(eq(occurrences.id, id), sql`${occurrences.status} <> 'planned'`))
     .run();
 }
+
+/**
+ * A new entry that repeats monthly: stores the recurrence and records the entry as its first payment
+ * (the occurrence of the entry's month), so the next months show up as planned bills.
+ */
+export function createRecurringEntry(input: RecurrenceInput, occurredAt: string): string {
+  const recurrenceId = createRecurrence(input);
+  const occurrenceId = ensureOccurrence(recurrenceId, input.startMonth);
+  return markOccurrencePaid(occurrenceId, { amountCents: input.amountCents, occurredAt });
+}

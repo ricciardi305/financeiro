@@ -22,6 +22,26 @@ export function getNetWorth(): NetWorth {
   return netWorth(balances(), openInvoiceDebtCents());
 }
 
+/** Income and spending of one month, without the fixed-bill projection (cheap enough to run per chart bar). */
+export function getMonthTotals(month: string): { month: string; incomeCents: number; expenseCents: number } {
+  const { from, to } = monthRange(month);
+  const rows = db
+    .select({ kind: transactions.kind, amountCents: transactions.amountCents })
+    .from(transactions)
+    .where(
+      and(
+        isNull(transactions.deletedAt),
+        gte(transactions.occurredOn, from),
+        lt(transactions.occurredOn, to),
+        or(eq(transactions.kind, "income"), eq(transactions.kind, "expense"), and(eq(transactions.kind, "adjustment"), isNotNull(transactions.invoiceId))),
+      ),
+    )
+    .all();
+  const incomeCents = rows.filter((r) => r.kind === "income").reduce((s, r) => s + r.amountCents, 0);
+  const expenseCents = -rows.filter((r) => r.kind !== "income").reduce((s, r) => s + r.amountCents, 0);
+  return { month, incomeCents, expenseCents };
+}
+
 export type MonthOverview = {
   month: string;
   incomeCents: number; // received so far

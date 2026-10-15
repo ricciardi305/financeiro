@@ -24,8 +24,9 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: colors.bg },
       }}
     >
+      <Tabs.Screen name="index" options={{ title: "Início", tabBarIcon: icon("pie-chart-outline") }} />
       <Tabs.Screen
-        name="index"
+        name="accounts"
         options={{
           title: "Contas",
           tabBarIcon: icon("wallet-outline"),

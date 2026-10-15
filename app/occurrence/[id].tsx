@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isoDateToBr, maskDate, monthLabel, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
+import { isoDateToBr, monthLabel, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
 import { errorMessage, UserError } from "@/domain/errors";
 import { saoPauloDate } from "@/domain/entries";
 import { formatCents } from "@/domain/money";
@@ -13,6 +13,7 @@ import {
   reopenOccurrence,
   skipOccurrence,
 } from "@/services/recurrences";
+import { DateField } from "@/ui/DateField";
 import { Button, Field, FormFooter, MoneyField, Text } from "@/ui/form";
 import { colors, spacing } from "@/ui/theme";
 import { toast } from "@/ui/toast";
@@ -107,7 +108,7 @@ export default function OccurrenceScreen() {
               onChangeCents={setCents}
               autoFocus={occ.isVariable}
             />
-            <Field label="Data" value={date} onChangeText={(t) => setDate(maskDate(t))} keyboardType="numeric" />
+            <DateField label="Data" value={date} onChange={setDate} />
             <Button secondary title="Pular este mês" onPress={() => run(() => skipOccurrence(occ.id), "Conta pulada", "Não foi possível pular")} />
           </>
         )}

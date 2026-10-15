@@ -7,17 +7,8 @@ import { formatCents } from "@/domain/money";
 import { totalsForKind } from "@/domain/recurrences";
 import { getMonthOverview, type MonthOverview } from "@/services/overview";
 import { ensureOccurrence, listMonthOccurrences, type OccurrenceRow } from "@/services/recurrences";
-import { Button, EmptyState, Text } from "@/ui/form";
-import { colors, ripple, spacing, TAP } from "@/ui/theme";
-
-const card = {
-  padding: spacing.lg,
-  borderWidth: 1,
-  borderColor: colors.border,
-  backgroundColor: colors.surface,
-  borderRadius: spacing.sm,
-  gap: spacing.xs,
-} as const;
+import { BigNumber, Button, Card, EmptyState, Eyebrow, Pill, ProgressBar, Text } from "@/ui/form";
+import { colors, RADIUS, ripple, spacing, TAP } from "@/ui/theme";
 
 const line = (label: string, value: string, color: string = colors.text) => (
   <View key={label} style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -32,14 +23,12 @@ function Overview({ o }: { o: MonthOverview }) {
   const max = s.byCategory[0]?.cents ?? 0;
   return (
     <>
-      <View style={card}>
+      <Card hero>
         {o.projectedEndCents !== null && (
           <>
-            <Text style={{ color: colors.muted }}>Saldo previsto no fim do mês</Text>
-            <Text style={{ fontSize: 32, fontWeight: "700", color: o.projectedEndCents < 0 ? colors.expense : colors.text }}>
-              {formatCents(o.projectedEndCents)}
-            </Text>
-            <Text style={{ color: colors.muted }}>
+            <Eyebrow>Saldo previsto no fim do mês</Eyebrow>
+            <BigNumber cents={o.projectedEndCents} />
+            <Text style={{ color: colors.muted, fontSize: 13, marginBottom: spacing.sm }}>
               Saldo atual + receitas e contas fixas que faltam − faturas a vencer.
             </Text>
           </>
@@ -48,33 +37,24 @@ function Overview({ o }: { o: MonthOverview }) {
         {line("Despesas do mês", formatCents(s.totalCents), colors.expense)}
         {o.projectedEndCents !== null && line("Contas fixas a pagar", formatCents(o.pendingExpenseCents))}
         {o.projectedEndCents !== null && o.pendingIncomeCents > 0 && line("Receitas a receber", formatCents(o.pendingIncomeCents))}
-      </View>
+      </Card>
 
       {o.dueInvoices.length > 0 && (
-        <View style={card}>
+        <Card>
           <Text style={{ fontWeight: "600" }}>Faturas a pagar</Text>
           {o.dueInvoices.map((i) =>
             line(`${i.cardName} · vence ${isoDateToBr(i.dueDate).slice(0, 5)}`, formatCents(i.remainingCents)),
           )}
-        </View>
+        </Card>
       )}
 
       {s.byCategory.length > 0 && (
-        <View style={card}>
+        <Card>
           <Text style={{ fontWeight: "600" }}>Gastos por categoria</Text>
           {s.byCategory.map((c) => (
             <View key={c.name} style={{ gap: 2, marginTop: spacing.xs }}>
               {line(c.name, formatCents(c.cents))}
-              <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.border }}>
-                <View
-                  style={{
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: colors.primary,
-                    width: `${max > 0 ? Math.max(2, Math.round((Math.max(c.cents, 0) / max) * 100)) : 0}%`,
-                  }}
-                />
-              </View>
+              <ProgressBar ratio={max > 0 ? Math.max(c.cents, 0) / max : 0} />
             </View>
           ))}
           <View style={{ marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
@@ -82,11 +62,13 @@ function Overview({ o }: { o: MonthOverview }) {
             {line("Opcionais", formatCents(s.byNecessity.optionalCents))}
             {s.byNecessity.unclassifiedCents !== 0 && line("Sem classificação", formatCents(s.byNecessity.unclassifiedCents))}
           </View>
-        </View>
+        </Card>
       )}
     </>
   );
 }
+
+const STATE_BG = { planned: colors.neutralBg, late: colors.expenseBg, paid: colors.incomeBg, skipped: colors.neutralBg } as const;
 
 const STATE_LABEL = { planned: "Prevista", late: "Atrasada", paid: "Paga", skipped: "Pulada" } as const;
 
@@ -146,10 +128,8 @@ export default function MonthScreen() {
         justifyContent: "space-between",
         gap: spacing.md,
         padding: spacing.md,
-        borderWidth: 1,
-        borderColor: o.state === "late" ? colors.expense : colors.border,
         backgroundColor: colors.surface,
-        borderRadius: spacing.sm,
+        borderRadius: RADIUS,
         overflow: "hidden",
         opacity: o.state === "skipped" ? 0.55 : 1,
       }}
@@ -163,9 +143,9 @@ export default function MonthScreen() {
           {o.isVariable ? " · varia" : ""}
         </Text>
       </View>
-      <View style={{ alignItems: "flex-end" }}>
+      <View style={{ alignItems: "flex-end", gap: spacing.xs }}>
         <Text style={{ fontWeight: "600" }}>{formatCents(o.paidCents ?? o.expectedCents)}</Text>
-        <Text style={{ color: stateColor(o.state) }}>{STATE_LABEL[o.state]}</Text>
+        <Pill label={STATE_LABEL[o.state]} color={stateColor(o.state)} bg={STATE_BG[o.state]} />
       </View>
     </Pressable>
   );
@@ -201,28 +181,23 @@ export default function MonthScreen() {
           />
         ) : (
           <>
-            <View
-              style={{
-                padding: spacing.lg,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                borderRadius: spacing.sm,
-                gap: spacing.xs,
-              }}
-            >
-              <Text style={{ color: colors.muted }}>Falta pagar</Text>
-              <Text style={{ fontSize: 32, fontWeight: "700" }}>{formatCents(expense.pendingCents)}</Text>
-              <Text style={{ color: colors.muted }}>
+            <Card>
+              <Eyebrow>Falta pagar</Eyebrow>
+              <BigNumber cents={expense.pendingCents} negativeRed={false} />
+              <ProgressBar
+                ratio={expense.expectedCents > 0 ? expense.paidCents / expense.expectedCents : 0}
+                color={colors.income}
+              />
+              <Text style={{ color: colors.muted, fontSize: 13 }}>
                 Pago {formatCents(expense.paidCents)} de {formatCents(expense.expectedCents)} previstos
               </Text>
               {income.expectedCents > 0 && (
-                <Text style={{ color: colors.muted }}>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>
                   Receitas: {formatCents(income.paidCents)} recebidas
                   {income.pendingCents > 0 ? ` · ${formatCents(income.pendingCents)} a receber` : ""}
                 </Text>
               )}
-            </View>
+            </Card>
             {group("Receitas", incomes)}
             {group("Despesas obrigatórias", essential)}
             {group("Despesas opcionais", optional)}

@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { maskMonth, monthToBr, parseBrMonth } from "@/domain/dates";
+import { monthToBr, parseBrMonth } from "@/domain/dates";
 import { errorMessage, UserError } from "@/domain/errors";
 import { saoPauloDate } from "@/domain/entries";
 import { listAccounts } from "@/services/accounts";
-import { listCategories } from "@/services/categories";
 import { createRecurrence, getRecurrence, setRecurrenceActive, updateRecurrence } from "@/services/recurrences";
+import { CategoryPicker } from "@/ui/CategoryPicker";
+import { MonthField } from "@/ui/DateField";
 import { Button, Chips, Field, FormFooter, MoneyField, Text } from "@/ui/form";
 import { colors, spacing } from "@/ui/theme";
 import { toast } from "@/ui/toast";
@@ -54,7 +55,6 @@ export default function RecurrenceForm() {
   const accountOptions = allAccounts
     .filter((a) => kind === "expense" || a.type !== "credit_card")
     .map((a) => ({ value: a.id, label: a.name }));
-  const categories = useMemo(() => listCategories(kind), [kind]);
 
   const changeKind = (k: Kind) => {
     setKind(k);
@@ -129,7 +129,7 @@ export default function RecurrenceForm() {
           label="Dia do mês"
           value={day}
           onChangeText={(t) => setDay(t.replace(/\D/g, "").slice(0, 2))}
-          keyboardType="numeric"
+          keyboardType="number-pad"
           placeholder="1 a 31"
         />
         <Chips
@@ -138,9 +138,9 @@ export default function RecurrenceForm() {
           value={accountId}
           onChange={setAccountId}
         />
-        <Chips
+        <CategoryPicker
           label="Categoria (opcional)"
-          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          kind={kind}
           value={categoryId}
           onChange={setCategoryId}
           onClear={() => setCategoryId(undefined)}
@@ -148,19 +148,8 @@ export default function RecurrenceForm() {
         {kind === "expense" && (
           <Chips label="Necessidade" options={NECESSITIES} value={necessity} onChange={setNecessity} />
         )}
-        <Field
-          label="Começa em (mm/aaaa)"
-          value={start}
-          onChangeText={(t) => setStart(maskMonth(t))}
-          keyboardType="numeric"
-        />
-        <Field
-          label="Termina em (opcional, mm/aaaa)"
-          value={end}
-          onChangeText={(t) => setEnd(maskMonth(t))}
-          keyboardType="numeric"
-          placeholder="sem fim"
-        />
+        <MonthField label="Começa em" value={start} onChange={setStart} />
+        <MonthField label="Termina em (opcional)" value={end} onChange={setEnd} placeholder="sem fim" optional />
         {existing && (
           <Button
             danger={existing.active}

@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isoDateToBr, maskDate, parseBrDate } from "@/domain/dates";
+import { isoDateToBr, parseBrDate } from "@/domain/dates";
 import { errorMessage, UserError } from "@/domain/errors";
 import { saoPauloDate } from "@/domain/entries";
 import { getAccount } from "@/services/accounts";
 import { saveSnapshot } from "@/services/investments";
+import { DateField } from "@/ui/DateField";
 import { Button, Field, FormFooter, MoneyField, Text } from "@/ui/form";
 import { colors, spacing } from "@/ui/theme";
 import { toast } from "@/ui/toast";
@@ -47,7 +48,7 @@ export default function InvestmentSnapshot() {
           entre uma atualização e outra são descontados do rendimento.
         </Text>
         <MoneyField label="Saldo atual do investimento" cents={cents} onChangeCents={setCents} autoFocus />
-        <Field label="Data" value={date} onChangeText={(t) => setDate(maskDate(t))} keyboardType="numeric" />
+        <DateField label="Data" value={date} onChange={setDate} />
       </ScrollView>
       <FormFooter bottomInset={lift > 0 ? 0 : insets.bottom}>
         <Button title="Salvar" onPress={save} />

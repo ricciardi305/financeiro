@@ -70,3 +70,11 @@ Heurísticas de Nielsen e leis de UX (Hick, Miller, Fitts, Jakob), aplicadas com
 - O `KeyboardAvoidingView` não funcionou neste aparelho (Android com tela cheia não encolhe a janela). O rodapé fixo usa `src/ui/useKeyboardLift.ts`, que mede a sobreposição com o teclado e sobe a tela só o necessário.
 - As abas usam `@expo/vector-icons` (só JavaScript, sem rebuild).
 - Os filtros da lista ficam em `src/ui/FilterSheet.tsx`.
+
+## Revisão visual (2026-10-14)
+Inspirada em Nubank, Mobills/Organizze e Revolut. Só JavaScript, sem rebuild.
+- **Cartões sem borda dura**, raio 16 e um degrau de superfície (`surfaceHigh`) para o número principal da tela (`Card hero`, `BigNumber`, `Eyebrow` em `src/ui/form.tsx`).
+- **Ícone de categoria** (círculo colorido, `IconBadge`) nas linhas de lançamento; **avatar com a cor da instituição** nas contas (`institutionColor`).
+- **Lançamentos agrupados por dia** (Hoje, Ontem, dia da semana), resumo de receitas/despesas do mês e `+` nas entradas.
+- **Mês:** barra de progresso em "Falta pagar" e nas categorias; status das contas fixas como pílula colorida (`Pill`).
+- Pendente (ideia): cor por categoria nas barras de "Gastos por categoria" (exige `color` em `byCategory`), gráfico de rosca, cartão de crédito mostrando limite usado em barra.

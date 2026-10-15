@@ -8,6 +8,7 @@ import { formatCents } from "@/domain/money";
 import { listAccounts } from "@/services/accounts";
 import { listCategories } from "@/services/categories";
 import { confirmCaptured, discardCaptured, getInboxDetail, markAsOwnTransfer } from "@/services/capture";
+import { CategoryPicker } from "@/ui/CategoryPicker";
 import { Button, Chips, Field, FormFooter, Text } from "@/ui/form";
 import { refreshInbox } from "@/ui/inbox";
 import { colors, spacing } from "@/ui/theme";
@@ -108,9 +109,9 @@ export default function Review() {
         ) : (
           <>
             <Field label="Descrição" value={description} onChangeText={setDescription} />
-            <Chips
+            <CategoryPicker
               label="Categoria"
-              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              kind={isIncome ? "income" : "expense"}
               value={categoryId}
               onChange={pickCategory}
               onClear={() => setCategoryId(undefined)}
@@ -130,7 +131,7 @@ export default function Review() {
                   label="Parcelas"
                   value={installments}
                   onChangeText={(t) => setInstallments(t.replace(/\D/g, "").slice(0, 2))}
-                  keyboardType="numeric"
+                  keyboardType="number-pad"
                 />
                 <Text style={{ color: colors.muted }}>
                   A notificação mostra o valor total. Com mais de 1 parcela, o app divide entre as faturas.

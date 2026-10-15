@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isoDateToBr, maskDate, monthLabel, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
+import { isoDateToBr, monthLabel, noonInSaoPaulo, parseBrDate, parseBrMonth } from "@/domain/dates";
 import { errorMessage, UserError } from "@/domain/errors";
 import { saoPauloDate } from "@/domain/entries";
 import { formatCents } from "@/domain/money";
 import { listAccounts } from "@/services/accounts";
 import { listCategories } from "@/services/categories";
 import { createCardPurchase, previewCardPurchase } from "@/services/invoices";
+import { createRecurringEntry } from "@/services/recurrences";
 import {
   createEntry,
   createTransfer,
@@ -20,6 +21,8 @@ import {
   updateTransfer,
   type InstallmentScope,
 } from "@/services/transactions";
+import { CategoryPicker } from "@/ui/CategoryPicker";
+import { DateField, MonthField } from "@/ui/DateField";
 import { Button, Chips, Field, FormFooter, MoneyField, Text } from "@/ui/form";
 import { colors, ripple, spacing, TAP } from "@/ui/theme";
 import { toast } from "@/ui/toast";
@@ -33,6 +36,10 @@ const KINDS: { value: Kind; label: string }[] = [
   { value: "income", label: "Receita" },
   { value: "transfer", label: "Transferência" },
 ];
+const REPEATS = [
+  { value: "none", label: "Não repete" },
+  { value: "monthly", label: "Todo mês" },
+] as const;
 const NECESSITIES: { value: Necessity; label: string }[] = [
   { value: "essential", label: "Obrigatória" },
   { value: "optional", label: "Opcional" },
@@ -66,6 +73,8 @@ export default function EntryForm() {
   const [necessity, setNecessity] = useState<Necessity | undefined>(existing?.necessity ?? undefined);
   const [installments, setInstallments] = useState("1");
   const [monthOffset, setMonthOffset] = useState(0);
+  const [repeat, setRepeat] = useState<"none" | "monthly">("none");
+  const [repeatEnd, setRepeatEnd] = useState("");
 
   // Cards only take expenses; income and transfers use the other accounts.
   const eligible = allAccounts.filter((a) => kind === "expense" || a.type !== "credit_card");
@@ -110,6 +119,8 @@ export default function EntryForm() {
     }
   }, [isCardPurchase, accountId, day, cents, count, monthOffset]);
 
+  const canRepeat = !existing && !isTransfer && !(isCardPurchase && count > 1);
+
   const save = () => {
     try {
       if (!day) throw new UserError("Data inválida. Use o formato dd/mm/aaaa.");
@@ -141,6 +152,25 @@ export default function EntryForm() {
         if (!accountId) throw new UserError("Escolha a conta de origem.");
         if (!toAccountId) throw new UserError("Escolha a conta de destino.");
         createTransfer({ fromAccountId: accountId, toAccountId, amountCents: cents, description, occurredAt });
+      } else if (canRepeat && repeat === "monthly") {
+        if (!accountId) throw new UserError("Escolha a conta ou o cartão.");
+        const endMonth = repeatEnd.trim() ? parseBrMonth(repeatEnd) : undefined;
+        if (endMonth === null) throw new UserError("Mês final inválido.");
+        createRecurringEntry(
+          {
+            description,
+            kind: kind === "income" ? "income" : "expense",
+            accountId,
+            categoryId,
+            necessity: kind === "expense" ? necessity : undefined,
+            amountCents: cents,
+            isVariableAmount: false,
+            dayOfMonth: Number(day.slice(8, 10)),
+            startMonth: day.slice(0, 7),
+            endMonth,
+          },
+          occurredAt,
+        );
       } else if (isCardPurchase) {
         if (!accountId) throw new UserError("Escolha o cartão.");
         if (!description.trim()) throw new UserError("Informe uma descrição.");
@@ -167,7 +197,7 @@ export default function EntryForm() {
           necessity: kind === "expense" ? necessity : undefined,
         });
       }
-      toast(existing ? "Lançamento atualizado" : isCardPurchase && count > 1 ? `${count} parcelas lançadas` : "Lançamento salvo");
+      toast(existing ? "Lançamento atualizado" : canRepeat && repeat === "monthly" ? "Conta fixa criada" : isCardPurchase && count > 1 ? `${count} parcelas lançadas` : "Lançamento salvo");
       router.back();
     } catch (e) {
       Alert.alert("Não foi possível salvar", errorMessage(e));
@@ -245,14 +275,7 @@ export default function EntryForm() {
           autoFocus={!existing}
         />
         <Field label="Descrição" value={description} onChangeText={setDescription} />
-        <Field
-          label="Data"
-          value={date}
-          onChangeText={(t) => setDate(maskDate(t))}
-          keyboardType="numeric"
-          placeholder="dd/mm/aaaa"
-          editable={!cardEdit}
-        />
+        <DateField label="Data" value={date} onChange={setDate} editable={!cardEdit} />
         {hasLater && (
           <Chips
             label="Aplicar a"
@@ -299,7 +322,7 @@ export default function EntryForm() {
               label="Parcelas"
               value={installments}
               onChangeText={(t) => setInstallments(t.replace(/\D/g, "").slice(0, 2))}
-              keyboardType="numeric"
+              keyboardType="number-pad"
             />
             {preview && (
               <View
@@ -339,9 +362,9 @@ export default function EntryForm() {
         )}
 
         {!isTransfer && (
-          <Chips
+          <CategoryPicker
             label="Categoria (opcional)"
-            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            kind={kind === "income" ? "income" : "expense"}
             value={categoryId}
             onChange={pickCategory}
             onClear={() => setCategoryId(undefined)}
@@ -355,6 +378,22 @@ export default function EntryForm() {
             onChange={setNecessity}
             onClear={() => setNecessity(undefined)}
           />
+        )}
+        {canRepeat && (
+          <>
+            <Chips label="Repetição" options={[...REPEATS]} value={repeat} onChange={setRepeat} />
+            {repeat === "monthly" && (
+              <>
+                {day && (
+                  <Text style={{ color: colors.muted }}>
+                    Vira uma conta fixa: este lançamento é o de {monthLabel(day.slice(0, 7))} e os próximos meses
+                    aparecem como previstos, no dia {day.slice(8, 10)}.
+                  </Text>
+                )}
+                <MonthField label="Repete até (opcional)" value={repeatEnd} onChange={setRepeatEnd} placeholder="sem fim" optional />
+              </>
+            )}
+          </>
         )}
         {existing && <Button title="Excluir lançamento" onPress={remove} danger />}
       </ScrollView>

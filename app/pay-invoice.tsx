@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isoDateToBr, maskDate, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
+import { isoDateToBr, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
 import { errorMessage, UserError } from "@/domain/errors";
 import { saoPauloDate } from "@/domain/entries";
 import { formatCents } from "@/domain/money";
 import { getAccount } from "@/services/accounts";
 import { getInvoiceDetail, payInvoice } from "@/services/invoices";
+import { DateField } from "@/ui/DateField";
 import { Button, Field, FormFooter, MoneyField, Text } from "@/ui/form";
 import { invoiceTitle } from "@/ui/invoiceLabels";
 import { colors, spacing } from "@/ui/theme";
@@ -61,7 +62,7 @@ export default function PayInvoice() {
           title={`Usar o valor total (${formatCents(inv.summary.remainingCents)})`}
           onPress={() => setCents(inv.summary.remainingCents)}
         />
-        <Field label="Data" value={date} onChangeText={(t) => setDate(maskDate(t))} keyboardType="numeric" />
+        <DateField label="Data" value={date} onChange={setDate} />
       </ScrollView>
       <FormFooter bottomInset={lift > 0 ? 0 : insets.bottom}>
         <Button title="Registrar pagamento" onPress={save} />

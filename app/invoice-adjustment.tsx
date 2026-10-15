@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isoDateToBr, maskDate, monthLabel, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
+import { isoDateToBr, monthLabel, noonInSaoPaulo, parseBrDate } from "@/domain/dates";
 import { errorMessage, UserError } from "@/domain/errors";
 import { saoPauloDate } from "@/domain/entries";
 import { getAccount } from "@/services/accounts";
 import { listCategories } from "@/services/categories";
 import { addInvoiceAdjustment } from "@/services/invoices";
+import { DateField } from "@/ui/DateField";
 import { Button, Chips, Field, FormFooter, MoneyField, Text } from "@/ui/form";
 import { colors, spacing } from "@/ui/theme";
 import { toast } from "@/ui/toast";
@@ -73,7 +74,7 @@ export default function InvoiceAdjustment() {
           onChangeText={setDescription}
           placeholder={type === "refund" ? "Estorno" : "Juros e encargos"}
         />
-        <Field label="Data" value={date} onChangeText={(t) => setDate(maskDate(t))} keyboardType="numeric" />
+        <DateField label="Data" value={date} onChange={setDate} />
         <Chips
           label="Categoria (opcional)"
           options={categories.map((c) => ({ value: c.id, label: c.name }))}

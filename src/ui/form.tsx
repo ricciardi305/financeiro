@@ -1,6 +1,7 @@
-import { Pressable, Text as RNText, type TextProps, TextInput, View } from "react-native";
-import { centsFromTyped, formatInputCents } from "@/domain/money";
-import { colors, ripple, spacing, TAP } from "./theme";
+import { Feather } from "@expo/vector-icons";
+import { Pressable, Text as RNText, type TextProps, TextInput, View, type ViewProps } from "react-native";
+import { centsFromTyped, formatCents, formatInputCents } from "@/domain/money";
+import { colors, RADIUS, ripple, spacing, TAP } from "./theme";
 
 /** Drop-in for react-native's Text with the theme's text colour. */
 export function Text({ style, ...rest }: TextProps) {
@@ -11,7 +12,7 @@ export function Field(props: {
   label: string;
   value: string;
   onChangeText: (t: string) => void;
-  keyboardType?: "default" | "numeric" | "numbers-and-punctuation";
+  keyboardType?: "default" | "numeric" | "number-pad" | "numbers-and-punctuation";
   editable?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
@@ -58,7 +59,7 @@ export function MoneyField(props: {
       label={props.label}
       value={formatInputCents(props.cents)}
       onChangeText={(t) => props.onChangeCents(centsFromTyped(t, props.allowNegative))}
-      keyboardType={props.allowNegative ? "numbers-and-punctuation" : "numeric"}
+      keyboardType={props.allowNegative ? "numbers-and-punctuation" : "number-pad"}
       editable={props.editable}
       autoFocus={props.autoFocus}
       selectTextOnFocus // typing replaces the shown value instead of appending to it
@@ -68,7 +69,7 @@ export function MoneyField(props: {
 
 export function Chips<T extends string>(props: {
   label: string;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; color?: string }[];
   value: T | undefined;
   onChange: (v: T) => void;
   /** When set, tapping the selected chip again clears the choice. */
@@ -94,11 +95,15 @@ export function Chips<T extends string>(props: {
                 borderRadius: TAP / 2,
                 overflow: "hidden",
                 borderWidth: 1,
-                borderColor: on ? colors.primary : colors.border,
-                backgroundColor: on ? colors.chipOn : colors.surface,
+                borderColor: on ? (o.color ?? colors.primary) : colors.border,
+                backgroundColor: on ? (o.color ? `${o.color}33` : colors.chipOn) : colors.surface,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.sm,
                 opacity: props.disabled && !on ? 0.4 : 1,
               }}
             >
+              {o.color && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: o.color }} />}
               <Text>{o.label}</Text>
             </Pressable>
           );
@@ -138,6 +143,84 @@ export function EmptyState(props: { message: string; actionTitle?: string; onAct
     <View style={{ alignItems: "center", gap: spacing.lg, paddingVertical: spacing.xl }}>
       <Text style={{ color: colors.muted, textAlign: "center" }}>{props.message}</Text>
       {props.actionTitle && props.onAction && <Button title={props.actionTitle} onPress={props.onAction} />}
+    </View>
+  );
+}
+
+/** Borderless rounded card; `hero` lifts it one surface step for the key number of a screen. */
+export function Card({ hero, style, ...rest }: ViewProps & { hero?: boolean }) {
+  return (
+    <View
+      {...rest}
+      style={[
+        {
+          padding: spacing.lg,
+          borderRadius: RADIUS,
+          backgroundColor: hero ? colors.surfaceHigh : colors.surface,
+          gap: spacing.xs,
+          overflow: "hidden",
+        },
+        style,
+      ]}
+    />
+  );
+}
+
+/** Small uppercase-free eyebrow above a big number. */
+export function Eyebrow({ children }: { children: string }) {
+  return <Text style={{ color: colors.muted, fontSize: 13 }}>{children}</Text>;
+}
+
+/** Big headline number (balance, total). */
+export function BigNumber({ cents, negativeRed = true }: { cents: number; negativeRed?: boolean }) {
+  return (
+    <Text
+      style={{
+        fontSize: 34,
+        fontWeight: "700",
+        letterSpacing: -0.5,
+        color: negativeRed && cents < 0 ? colors.expense : colors.text,
+      }}
+    >
+      {formatCents(cents)}
+    </Text>
+  );
+}
+
+/** Round badge with a Feather icon on a tinted background (category / institution avatar). */
+export function IconBadge(props: { icon: string; color: string; size?: number }) {
+  const size = props.size ?? 40;
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: `${props.color}33`,
+      }}
+    >
+      <Feather name={props.icon as React.ComponentProps<typeof Feather>["name"]} size={size * 0.5} color={props.color} />
+    </View>
+  );
+}
+
+/** Small tinted status label. */
+export function Pill(props: { label: string; color: string; bg: string }) {
+  return (
+    <View style={{ alignSelf: "flex-start", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 999, backgroundColor: props.bg }}>
+      <Text style={{ color: props.color, fontSize: 12, fontWeight: "600" }}>{props.label}</Text>
+    </View>
+  );
+}
+
+/** Thin progress bar; `ratio` is clamped to 0..1. */
+export function ProgressBar({ ratio, color = colors.primary }: { ratio: number; color?: string }) {
+  const pct = Math.round(Math.min(1, Math.max(0, ratio)) * 100);
+  return (
+    <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: "hidden" }}>
+      <View style={{ height: 6, width: `${pct}%`, backgroundColor: color }} />
     </View>
   );
 }

@@ -137,3 +137,8 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 - Antes de dar uma tarefa por pronta: `npx tsc --noEmit`, `npm test` e build Android se mexeu em nativo.
 - Toda regra nova em `src/domain` vem com teste.
 - Se faltar uma decisão de produto, pergunte em vez de assumir.
+
+## Formulários (UI)
+- Datas usam `DateField` e meses `MonthField` (`src/ui/DateField.tsx`, calendário em JS, sem módulo nativo); o valor continua em texto `dd/mm/aaaa` / `mm/aaaa`. Teclado numérico é `number-pad`.
+- Categorias novas saem do `CategoryPicker` (`src/ui/CategoryPicker.tsx`, chip "+ Nova categoria"; nome único por tipo). Categorias padrão e as criadas valem igual.
+- Novo lançamento (receita ou despesa, conta ou cartão à vista) pode "Repetir todo mês": `createRecurringEntry` cria a conta fixa e registra o lançamento como o pagamento da ocorrência do mês dele.

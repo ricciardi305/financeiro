@@ -86,6 +86,8 @@ export type TransactionRow = {
   kind: "income" | "expense" | "transfer" | "adjustment";
   description: string;
   categoryName: string | null;
+  categoryIcon: string | null;
+  categoryColor: string | null;
   occurredOn: string;
   status: "pending" | "confirmed";
   isTransfer: boolean;
@@ -109,6 +111,8 @@ export function listTransactions(f: { month: string; accountId?: string; categor
       kind: transactions.kind,
       description: transactions.description,
       categoryName: categories.name,
+      categoryIcon: categories.icon,
+      categoryColor: categories.color,
       occurredOn: transactions.occurredOn,
       status: transactions.status,
       transferGroupId: transactions.transferGroupId,
