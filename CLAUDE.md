@@ -142,3 +142,4 @@ id, name, kind (`income` | `expense`), icon, color, parentId?, defaultNecessity?
 - Datas usam `DateField` e meses `MonthField` (`src/ui/DateField.tsx`, calendário em JS, sem módulo nativo); o valor continua em texto `dd/mm/aaaa` / `mm/aaaa`. Teclado numérico é `number-pad`.
 - Categorias novas saem do `CategoryPicker` (`src/ui/CategoryPicker.tsx`, chip "+ Nova categoria"; nome único por tipo). Categorias padrão e as criadas valem igual.
 - Novo lançamento (receita ou despesa, conta ou cartão à vista) pode "Repetir todo mês": `createRecurringEntry` cria a conta fixa e registra o lançamento como o pagamento da ocorrência do mês dele.
+- Build release (`npx expo run:android --variant release`): o plugin `plugins/with-arm64-only.js` compila só `arm64-v8a`, porque o Reanimated falha em `armeabi-v7a` no Windows. Se o `--device` for usado, passe o **nome** do aparelho, não o serial.

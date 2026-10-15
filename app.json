@@ -28,7 +28,8 @@
         }
       ],
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/with-arm64-only"
     ],
     "experiments": {
       "typedRoutes": true,
