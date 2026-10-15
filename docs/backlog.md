@@ -37,3 +37,5 @@ Itens conhecidos que ficaram para depois, com o motivo e quando fazem sentido. A
 | **Aviso de dev do expo-router** | Ao abrir o app por link a frio no modo dev aparece "state update on a component that hasn't mounted yet". Vem do `useLinking` do próprio expo-router. | Ignorar; reavaliar ao atualizar o Expo. |
 | **Ícones das abas** | Usam `@expo/vector-icons`. | Se algum ícone falhar em outro aparelho, trocar por texto. |
 | **Regra de fatura por data de vencimento** | O vencimento usa "primeiro `dueDay` depois do fechamento". | Conferir com faturas reais dos dois bancos junto do item do Nubank. |
+| **Fase 8 (Pluggy) cancelada** | A Pluggy dá 15 dias grátis e depois cobra cerca de R$ 500 por mês, inviável para uso pessoal. A captura por notificações (Fase 7) cobre o essencial. | Reavaliar só se surgir uma alternativa gratuita de Open Finance. |
+| **Importação de extrato (OFX/CSV) cancelada** | Considerada no lugar da Pluggy e descartada por decisão do usuário. Nada foi implementado. | Só retomar se o usuário pedir. |
